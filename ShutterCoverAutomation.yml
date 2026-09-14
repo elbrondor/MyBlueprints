@@ -70,21 +70,7 @@ blueprint:
             - cover
             multiple: false
             reorder: false
-        my_window_sensor:
-          name: Fenstersensor
-          description: "Das ist der Sensor der erkennt ob die Tür oder das Fenster offen oder geschlossen ist."
-          selector:
-            entity:
-              filter:
-              - domain:
-                - binary_sensor
-                device_class:
-                - door
-                - window
-              - domain:
-                - sensor
-              multiple: false
-              reorder: false
+
 
 
 # =============================================================================
