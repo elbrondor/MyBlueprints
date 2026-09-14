@@ -63,13 +63,14 @@ blueprint:
       icon: mdi:vector-link
       input:
         my_cover:
-        name: Rollo
-        selector:
-          entity:
-            domain:
-            - cover
-            multiple: false
-            reorder: false
+          name: Rollo
+          description: Das zu Steuernde Rollo
+          selector:
+            entity:
+              domain:
+              - cover
+              multiple: false
+              reorder: false
 
 
 
