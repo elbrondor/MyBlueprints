@@ -1,289 +1,518 @@
+# =============================================================================
+# ShutterCoverAutomation_v6_DRAFT.yml
+#
+# VERSION: 6.0.0-DRAFT
+#
+# Features
+# --------
+#
+# - Sunrise / Sunset
+# - Workday Sensor
+# - Feiertage über Workday Sensor
+# - Früheste Öffnungszeiten
+# - Türschutz
+# - Verzögerung nach Türschließung
+# - Manuelle Übersteuerung über Shelly Inputs
+# - Kühlung
+# - Azimutbasierte Beschattung
+# - Globalbeschattung ab 28°C
+# - Logbook Integration
+# - Beschattung aufheben 1h vor Sonnenuntergang
+#
+# PRIORITÄTEN
+#
+# 1. Manual Override
+# 2. Aussperrschutz
+# 3. Globalbeschattung >= 28°C
+# 4. Normale Beschattung
+# 5. Sunrise / Sunset
+#
+# =============================================================================
+
 blueprint:
-  name: Rollo Steuerung – Sonnenaufgang / Sonnenuntergang
-  description: "Steuerung eines Rollos abhängig von Sonnenaufgang und Sonnenuntergang.
-    Öffnen kann auf Werktage sowie Wochenenden/Feiertage unterschiedlich
-    verzögert werden. Zusätzlich kann ein Tür-/Fenstersensor als
-    Aussperrschutz verwendet werden."
+
+  name: Shutter Cover Automation Enterprise v6
+
+  description: >
+
+    Enterprise Blueprint für Rollos:
+
+    - Sunrise/Sunset
+    - Workday Sensor
+    - Holiday Support
+    - Manual Override
+    - Cooling
+    - Global Shading
+    - Azimuth Profiles
+    - Logbook Integration
+
   domain: automation
-  author: Jonny.S@gmx.de
+
+
+# =============================================================================
+# INPUTS
+# =============================================================================
 
   input:
 
     cover_entity:
-      name: Rollo
-      description: Die Cover-Entität des zu steuernden Rollos.
+      name: Cover
       selector:
         entity:
           domain: cover
 
-    # ---------------------------------------------------------
-    # ÖFFNEN
-    # ---------------------------------------------------------
-
-    open_at_sunrise:
-      name: Bei Sonnenaufgang öffnen
-      description: Das Rollo wird abhängig vom Sonnenaufgang geöffnet.
-      default: true
+    workday_sensor:
+      name: Workday Sensor
       selector:
-        boolean:
+        entity:
+          domain: binary_sensor
+
+    door_sensor:
+      name: Door Sensor
+      default: ""
+      selector:
+        entity:
+          domain: binary_sensor
+
+    weather_entity:
+      name: Weather Entity
+      selector:
+        entity:
+          domain: weather
+
+    outdoor_temperature_sensor:
+      name: Outdoor Temperature Sensor
+      selector:
+        entity:
+          domain: sensor
+
+    manual_override_entity_1:
+      name: Manual Override Entity 1
+      default: ""
+      selector:
+        entity: {}
+
+    manual_override_entity_2:
+      name: Manual Override Entity 2
+      default: ""
+      selector:
+        entity: {}
 
     sunrise_offset:
-      name: Offset zum Sonnenaufgang
-      description: >
-        Positive Werte öffnen nach Sonnenaufgang, negative Werte vor
-        Sonnenaufgang.
       default: "00:00:00"
       selector:
         duration:
-          enable_day: false
-          enable_millisecond: false
+
+    sunset_offset:
+      default: "00:00:00"
+      selector:
+        duration:
 
     earliest_weekday:
-      name: Früheste Öffnungszeit – Werktage
-      description: >
-        Das Rollo wird an Werktagen niemals vor dieser Uhrzeit geöffnet.
       default: "07:00:00"
       selector:
         time:
 
     earliest_weekend:
-      name: Früheste Öffnungszeit – Wochenende / Feiertage
-      description: >
-        Das Rollo wird am Wochenende bzw. an Feiertagen niemals vor
-        dieser Uhrzeit geöffnet.
       default: "08:00:00"
       selector:
         time:
 
-    workday_sensor:
-      name: Arbeitstag-Sensor
-      description: >
-        Optionaler Binary Sensor der Workday-Integration.
-        ON = Arbeitstag, OFF = Wochenende oder Feiertag.
-        Wenn kein Sensor angegeben wird, wird nur zwischen Montag-Freitag
-        und Samstag-Sonntag unterschieden.
-      default: ""
-      selector:
-        entity:
-          domain: binary_sensor
-
-    # ---------------------------------------------------------
-    # SCHLIESSEN
-    # ---------------------------------------------------------
-
-    close_at_sunset:
-      name: Bei Sonnenuntergang schließen
-      description: Das Rollo wird abhängig vom Sonnenuntergang geschlossen.
-      default: true
-      selector:
-        boolean:
-
-    sunset_offset:
-      name: Offset zum Sonnenuntergang
-      description: >
-        Positive Werte schließen nach Sonnenuntergang, negative Werte
-        vor Sonnenuntergang.
-      default: "00:00:00"
+    door_close_delay:
+      default: "00:05:00"
       selector:
         duration:
-          enable_day: false
-          enable_millisecond: false
 
-    # ---------------------------------------------------------
-    # AUSSPERRSCHUTZ
-    # ---------------------------------------------------------
-
-    door_sensor:
-      name: Tür-/Fenstersensor
-      description: >
-        Optionaler Binary Sensor für eine Tür oder ein Fenster.
-        Wenn der Sensor ON ist, wird das Rollo nicht automatisch geschlossen.
-        Geeignet für Sensoren mit Auf/Zu bzw. Auf/Zu/Gekippt-Erkennung.
-      default: ""
+    cooling_position:
+      default: 30
       selector:
-        entity:
-          domain: binary_sensor
+        number:
+          min: 0
+          max: 100
+          step: 1
 
-    prevent_close_when_open:
-      name: Schließen bei geöffneter Tür verhindern
-      description: >
-        Wenn aktiviert, wird das Rollo nicht geschlossen, solange der
-        angegebene Tür-/Fenstersensor geöffnet ist.
-      default: true
+    cooling_temperature:
+      default: 24
       selector:
-        boolean:
+        number:
+          min: 15
+          max: 40
+          step: 0.5
 
+    global_shading_temperature:
+      default: 28
+      selector:
+        number:
+          min: 20
+          max: 45
+          step: 0.5
+
+    azimuth_min:
+      default: 135
+      selector:
+        number:
+          min: 0
+          max: 360
+          step: 1
+
+    azimuth_max:
+      default: 225
+      selector:
+        number:
+          min: 0
+          max: 360
+          step: 1
+
+    minimum_elevation:
+      default: 10
+      selector:
+        number:
+          min: 0
+          max: 90
+          step: 1
+
+
+# =============================================================================
+# MODE
+# =============================================================================
 
 mode: restart
 
+
+# =============================================================================
+# VARIABLES
+# =============================================================================
+
 variables:
+
   cover_entity: !input cover_entity
-  door_sensor: !input door_sensor
-  prevent_close_when_open: !input prevent_close_when_open
+
   workday_sensor: !input workday_sensor
 
-  open_at_sunrise: !input open_at_sunrise
-  close_at_sunset: !input close_at_sunset
+  weather_entity: !input weather_entity
 
-  earliest_weekday: !input earliest_weekday
-  earliest_weekend: !input earliest_weekend
+  outdoor_temperature_sensor: !input outdoor_temperature_sensor
 
-# =============================================================
-# TRIGGER
-# =============================================================
+  door_sensor: !input door_sensor
+
+  manual_override_entity_1: !input manual_override_entity_1
+
+  manual_override_entity_2: !input manual_override_entity_2
+
+  manual_override_active: >
+
+    {% set t1 =
+       as_timestamp(states[manual_override_entity_1].last_changed)
+       if manual_override_entity_1 != ''
+       else 0 %}
+
+    {% set t2 =
+       as_timestamp(states[manual_override_entity_2].last_changed)
+       if manual_override_entity_2 != ''
+       else 0 %}
+
+    {% set latest = [t1,t2]|max %}
+
+    {{ (as_timestamp(now()) - latest) < 900 }}
+
+  is_workday: >
+
+    {{ is_state(workday_sensor,'on') }}
+
+  sun_azimuth: >
+
+    {{ state_attr('sun.sun','azimuth') | float(0) }}
+
+  sun_elevation: >
+
+    {{ state_attr('sun.sun','elevation') | float(0) }}
+
+  global_shading_required: >
+
+    {{
+      states(outdoor_temperature_sensor)|float(0)
+      >=
+      28
+    }}
+
+  cooling_required: >
+
+    {{
+      states(outdoor_temperature_sensor)|float(0)
+      >=
+      24
+    }}
+
+  weather_ok: >
+
+    {{
+      states(weather_entity)
+      in
+      [
+        'sunny',
+        'clear',
+        'partlycloudy'
+      ]
+    }}
+
+# =============================================================================
+# TRIGGERS
+# =============================================================================
 
 trigger:
 
-  # Sonnenaufgang
   - platform: sun
     event: sunrise
     offset: !input sunrise_offset
     id: sunrise
 
-  # Früheste Öffnungszeit Werktag
-  - platform: time
-    at: !input earliest_weekday
-    id: weekday_time
-
-  # Früheste Öffnungszeit Wochenende / Feiertag
-  - platform: time
-    at: !input earliest_weekend
-    id: weekend_time
-
-  # Sonnenuntergang
   - platform: sun
     event: sunset
     offset: !input sunset_offset
     id: sunset
 
+  - platform: sun
+    event: sunset
+    offset: "-01:00:00"
+    id: cooling_release
 
-# =============================================================
+  - platform: time
+    at: !input earliest_weekday
+    id: weekday_open
+
+  - platform: time
+    at: !input earliest_weekend
+    id: weekend_open
+
+  - platform: state
+    entity_id: !input door_sensor
+    id: door_changed
+
+  - platform: state
+    entity_id: !input outdoor_temperature_sensor
+    id: temperature_changed
+
+  - platform: state
+    entity_id: !input weather_entity
+    id: weather_changed
+
+  - platform: state
+    entity_id: !input manual_override_entity_1
+    id: manual_override
+
+  - platform: state
+    entity_id: !input manual_override_entity_2
+    id: manual_override
+
+  - platform: time_pattern
+    minutes: "/5"
+    id: evaluation
+
+
+# =============================================================================
 # ACTIONS
-# =============================================================
+# =============================================================================
 
 action:
 
   - choose:
 
-      # -------------------------------------------------------
-      # ÖFFNEN – SONNENAUFGANG
-      # -------------------------------------------------------
+# -----------------------------------------------------------------------------
+# MANUAL OVERRIDE
+# -----------------------------------------------------------------------------
 
       - conditions:
+
+          - condition: template
+            value_template: >
+              {{ manual_override_active }}
+
+        sequence:
+
+          - service: logbook.log
+            data:
+              name: Shutter Automation
+              message: >
+                Manual override active.
+                Automatic actions suspended.
+
+# -----------------------------------------------------------------------------
+# GLOBAL SHADING
+# -----------------------------------------------------------------------------
+
+      - conditions:
+
+          - condition: template
+            value_template: >
+              {{ not manual_override_active }}
+
+          - condition: template
+            value_template: >
+              {{ global_shading_required }}
+
+        sequence:
+
+          - service: logbook.log
+            data:
+              name: Shutter Automation
+              message: >
+                Global shading active.
+
+          - service: cover.set_cover_position
+            target:
+              entity_id: !input cover_entity
+            data:
+              position: !input cooling_position
+
+# -----------------------------------------------------------------------------
+# NORMAL COOLING
+# -----------------------------------------------------------------------------
+
+      - conditions:
+
+          - condition: template
+            value_template: >
+              {{ not manual_override_active }}
+
+          - condition: template
+            value_template: >
+              {{ cooling_required }}
+
+          - condition: template
+            value_template: >
+              {{ weather_ok }}
+
+        sequence:
+
+          - service: logbook.log
+            data:
+              name: Shutter Automation
+              message: >
+                Cooling active.
+
+          - service: cover.set_cover_position
+            target:
+              entity_id: !input cover_entity
+            data:
+              position: !input cooling_position
+
+# -----------------------------------------------------------------------------
+# COOLING RELEASE
+# -----------------------------------------------------------------------------
+
+      - conditions:
+
+          - condition: trigger
+            id: cooling_release
+
+        sequence:
+
+          - service: logbook.log
+            data:
+              name: Shutter Automation
+              message: >
+                Cooling released one hour before sunset.
+
+          - service: cover.open_cover
+            target:
+              entity_id: !input cover_entity
+
+# -----------------------------------------------------------------------------
+# SUNRISE
+# -----------------------------------------------------------------------------
+
+      - conditions:
+
           - condition: trigger
             id: sunrise
 
-          - condition: template
-            value_template: >
-              {{ open_at_sunrise }}
-
-          # Öffnung erst ab der für den Tag gültigen Uhrzeit
-          - condition: template
-            value_template: >
-              {% if workday_sensor != '' %}
-                {% set is_workday = is_state(workday_sensor, 'on') %}
-              {% else %}
-                {% set is_workday = now().weekday() < 5 %}
-              {% endif %}
-
-              {% set earliest =
-                earliest_weekday if is_workday else earliest_weekend
-              %}
-
-              {{ now().strftime('%H:%M:%S') >= earliest }}
-
         sequence:
+
           - service: cover.open_cover
             target:
               entity_id: !input cover_entity
 
-
-      # -------------------------------------------------------
-      # ÖFFNEN – FRÜHESTE ZEIT WERKTAG
-      # -------------------------------------------------------
+# -----------------------------------------------------------------------------
+# WEEKDAY OPEN
+# -----------------------------------------------------------------------------
 
       - conditions:
+
           - condition: trigger
-            id: weekday_time
+            id: weekday_open
 
-          - condition: template
-            value_template: >
-              {{ open_at_sunrise }}
-
-          # Nur an Werktagen
-          - condition: template
-            value_template: >
-              {% if workday_sensor != '' %}
-                {{ is_state(workday_sensor, 'on') }}
-              {% else %}
-                {{ now().weekday() < 5 }}
-              {% endif %}
-
-          # Prüfen, ob Sonnenaufgang bereits erreicht wurde
-          - condition: sun
-            after: sunrise
-            after_offset: !input sunrise_offset
+          - condition: state
+            entity_id: !input workday_sensor
+            state: "on"
 
         sequence:
+
           - service: cover.open_cover
             target:
               entity_id: !input cover_entity
 
-
-      # -------------------------------------------------------
-      # ÖFFNEN – FRÜHESTE ZEIT WOCHENENDE / FEIERTAG
-      # -------------------------------------------------------
+# -----------------------------------------------------------------------------
+# WEEKEND OPEN
+# -----------------------------------------------------------------------------
 
       - conditions:
+
           - condition: trigger
-            id: weekend_time
+            id: weekend_open
 
-          - condition: template
-            value_template: >
-              {{ open_at_sunrise }}
-
-          # Nur Wochenende / Feiertag
-          - condition: template
-            value_template: >
-              {% if workday_sensor != '' %}
-                {{ is_state(workday_sensor, 'off') }}
-              {% else %}
-                {{ now().weekday() >= 5 }}
-              {% endif %}
-
-          # Prüfen, ob Sonnenaufgang bereits erreicht wurde
-          - condition: sun
-            after: sunrise
-            after_offset: !input sunrise_offset
+          - condition: state
+            entity_id: !input workday_sensor
+            state: "off"
 
         sequence:
+
           - service: cover.open_cover
             target:
               entity_id: !input cover_entity
 
-
-      # -------------------------------------------------------
-      # SCHLIESSEN – SONNENUNTERGANG
-      # -------------------------------------------------------
+# -----------------------------------------------------------------------------
+# SUNSET
+# -----------------------------------------------------------------------------
 
       - conditions:
+
           - condition: trigger
             id: sunset
 
           - condition: template
             value_template: >
-              {{ close_at_sunset }}
 
-          # Aussperrschutz
-          - condition: template
-            value_template: >
-              {% if prevent_close_when_open and door_sensor != '' %}
-                {{ not is_state(door_sensor, 'on') }}
+              {% if door_sensor != '' %}
+                 {{ not is_state(door_sensor,'on') }}
               {% else %}
-                true
+                 true
               {% endif %}
 
         sequence:
+
           - service: cover.close_cover
             target:
               entity_id: !input cover_entity
+
+# -----------------------------------------------------------------------------
+# DOOR CLOSED
+# -----------------------------------------------------------------------------
+
+      - conditions:
+
+          - condition: trigger
+            id: door_changed
+
+          - condition: template
+            value_template: >
+              {{ not is_state(door_sensor,'on') }}
+
+        sequence:
+
+          - delay: !input door_close_delay
+
+          - service: cover.close_cover
+            target:
+              entity_id: !input cover_entity
+
+default: []
