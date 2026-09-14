@@ -1,7 +1,7 @@
 # =============================================================================
-# ShutterCoverAutomation.yml
+# ShutterCoverAutomation_v6_DRAFT.yml
 #
-# VERSION: 0.1.0
+# VERSION: 6.0.0-DRAFT
 #
 # Features
 # --------
@@ -31,7 +31,7 @@
 
 blueprint:
 
-  name: Shutter Cover Automation Enterprise
+  name: Shutter Cover Automation Enterprise v6
 
   description: >
 
@@ -47,44 +47,129 @@ blueprint:
     - Logbook Integration
 
   domain: automation
-  author: Jonny.S@gmx.de
-  homeassistant:
-    min_version: 2026.8.0
-  source_url: https://https://github.com/elbrondor/MyBlueprints/blob/master/ShutterCoverAutomation.yml
+
 
 # =============================================================================
 # INPUTS
 # =============================================================================
 
   input:
-    assignment_section:
-      name: Grundeinstellungen
-      description: Grundlegende Einstellungen für das zu Steuernde Rollo
-      icon: mdi:vector-link
-      input:
-        my_cover:
-        name: Rollo steuer entität
-        selector:
-          entity:
-            domain:
-            - cover
-            multiple: false
-            reorder: false
-        my_window_sensor:
-          name: Tür oder Fenstersensor
-          description: "Das ist der Sensor der erkennt ob die Tür oder das Fenster offen oder geschlossen ist."
-          selector:
-            entity:
-              filter:
-              - domain:
-                - binary_sensor
-                device_class:
-                - door
-                - window
-              - domain:
-                - sensor
-              multiple: false
-              reorder: false
+
+    cover_entity:
+      name: Cover
+      selector:
+        entity:
+          domain: cover
+
+    workday_sensor:
+      name: Workday Sensor
+      selector:
+        entity:
+          domain: binary_sensor
+
+    door_sensor:
+      name: Door Sensor
+      default: ""
+      selector:
+        entity:
+          domain: binary_sensor
+
+    weather_entity:
+      name: Weather Entity
+      selector:
+        entity:
+          domain: weather
+
+    outdoor_temperature_sensor:
+      name: Outdoor Temperature Sensor
+      selector:
+        entity:
+          domain: sensor
+
+    manual_override_entity_1:
+      name: Manual Override Entity 1
+      default: ""
+      selector:
+        entity: {}
+
+    manual_override_entity_2:
+      name: Manual Override Entity 2
+      default: ""
+      selector:
+        entity: {}
+
+    sunrise_offset:
+      default: "00:00:00"
+      selector:
+        duration:
+
+    sunset_offset:
+      default: "00:00:00"
+      selector:
+        duration:
+
+    earliest_weekday:
+      default: "07:00:00"
+      selector:
+        time:
+
+    earliest_weekend:
+      default: "08:00:00"
+      selector:
+        time:
+
+    door_close_delay:
+      default: "00:05:00"
+      selector:
+        duration:
+
+    cooling_position:
+      default: 30
+      selector:
+        number:
+          min: 0
+          max: 100
+          step: 1
+
+    cooling_temperature:
+      default: 24
+      selector:
+        number:
+          min: 15
+          max: 40
+          step: 0.5
+
+    global_shading_temperature:
+      default: 28
+      selector:
+        number:
+          min: 20
+          max: 45
+          step: 0.5
+
+    azimuth_min:
+      default: 135
+      selector:
+        number:
+          min: 0
+          max: 360
+          step: 1
+
+    azimuth_max:
+      default: 225
+      selector:
+        number:
+          min: 0
+          max: 360
+          step: 1
+
+    minimum_elevation:
+      default: 10
+      selector:
+        number:
+          min: 0
+          max: 90
+          step: 1
 
 
 # =============================================================================
