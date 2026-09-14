@@ -79,26 +79,3 @@ blueprint:
 # =============================================================================
 
 mode: restart
-
-
-# =============================================================================
-# VARIABLES
-# =============================================================================
-
-variables:
-
-  cover_entity: !input cover_entity
-
-  workday_sensor: !input workday_sensor
-
-  weather_entity: !input weather_entity
-
-  outdoor_temperature_sensor: !input outdoor_temperature_sensor
-
-  door_sensor: !input door_sensor
-
-  manual_override_entity_1: !input manual_override_entity_1
-
-  manual_override_entity_2: !input manual_override_entity_2
-
-  manual_override_active: >
