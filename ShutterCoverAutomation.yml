@@ -50,7 +50,7 @@ blueprint:
   author: Jonny.S@gmx.de
   homeassistant:
     min_version: 2026.8.0
-  source_url: https://https://github.com/elbrondor/MyBlueprints/blob/master/ShutterCoverAutomation.yml
+  source_url: https://github.com/elbrondor/MyBlueprints/blob/master/ShutterCoverAutomation.yml
 
 # =============================================================================
 # INPUTS
@@ -63,7 +63,7 @@ blueprint:
       icon: mdi:vector-link
       input:
         my_cover:
-        name: Rollo steuer entität
+        name: Rollo
         selector:
           entity:
             domain:
@@ -71,7 +71,7 @@ blueprint:
             multiple: false
             reorder: false
         my_window_sensor:
-          name: Tür oder Fenstersensor
+          name: Fenstersensor
           description: "Das ist der Sensor der erkennt ob die Tür oder das Fenster offen oder geschlossen ist."
           selector:
             entity:
