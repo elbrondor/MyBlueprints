@@ -1,0 +1,769 @@
+blueprint:
+  name: Climate Automation
+  description: >
+    Raumbezogene Klimaanlagensteuerung mit Temperaturstufen,
+    Fenster-/Rollo-Schutz, Außentemperatur-Sperre, globaler Freigabe,
+    Gäste-/Urlaubsmodus und manueller Übersteuerung.
+  domain: automation
+  homeassistant:
+    min_version: 2024.6.0
+
+  input:
+    climate_settings:
+      name: Klimaanlage
+      icon: mdi:air-conditioner
+      collapsed: false
+      input:
+        climate_entity:
+          name: Klimaanlage
+          description: Zu steuernde Climate-Entität.
+          selector:
+            entity:
+              filter:
+                - domain: climate
+
+        global_ac_switch:
+          name: Globaler Klimaanlagen-Hauptschalter
+          description: >
+            Absolute Freigabe. Ist dieser Schalter AUS, führt der Blueprint
+            keinerlei Aktionen an der Klimaanlage aus. Nach dem Einschalten
+            muss der Schalter 10 Minuten eingeschaltet bleiben, bevor die
+            Automatik wieder eingreift.
+          selector:
+            entity:
+              filter:
+                - domain: switch
+
+        target_temperature:
+          name: Solltemperatur
+          description: Solltemperatur im Kühlbetrieb.
+          default: 21
+          selector:
+            number:
+              min: 16
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+    temperature_sensors:
+      name: Temperatursensoren
+      icon: mdi:thermometer
+      collapsed: false
+      input:
+        room_temperature_sensor:
+          name: Raumtemperatur
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+                  device_class: temperature
+
+        outdoor_temperature_sensor:
+          name: Außentemperatur
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+                  device_class: temperature
+
+    temperature_limits:
+      name: Temperaturgrenzen
+      icon: mdi:thermometer-lines
+      collapsed: true
+      input:
+        temp0:
+          name: Temp0 – Ausschalten
+          default: 20
+          selector:
+            number:
+              min: 16
+              max: 35
+              step: 0.5
+              unit_of_measurement: "°C"
+
+        temp1:
+          name: Temp1 – Lüfter niedrig
+          default: 23
+          selector:
+            number:
+              min: 16
+              max: 35
+              step: 0.5
+              unit_of_measurement: "°C"
+
+        temp2:
+          name: Temp2 – Lüfter mittel
+          default: 25
+          selector:
+            number:
+              min: 16
+              max: 35
+              step: 0.5
+              unit_of_measurement: "°C"
+
+        temp3:
+          name: Temp3 – Lüfter hoch
+          default: 27
+          selector:
+            number:
+              min: 16
+              max: 35
+              step: 0.5
+              unit_of_measurement: "°C"
+
+    fan_settings:
+      name: Lüfterstufen
+      icon: mdi:fan
+      collapsed: true
+      input:
+        fan_mode_low:
+          name: Lüftermodus niedrig
+          default: "low"
+          selector:
+            text:
+
+        fan_mode_medium:
+          name: Lüftermodus mittel
+          default: "medium"
+          selector:
+            text:
+
+        fan_mode_high:
+          name: Lüftermodus hoch
+          default: "high"
+          selector:
+            text:
+
+    window_settings:
+      name: Fenster / Türen / Rollo
+      icon: mdi:window-open-variant
+      collapsed: true
+      input:
+        window_sensors:
+          name: Fenster- und Türsensoren
+          description: >
+            ON gilt als geöffnet. Mehrere Sensoren können ausgewählt werden.
+            Bei leerer Liste ist die Fensterprüfung deaktiviert.
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: binary_sensor
+
+        cover_entity:
+          name: Rollo
+          description: >
+            Optionales Rollo. current_position wird ausgewertet.
+            Das Rollo kann ein offenes Fenster freigeben, wenn es ausreichend
+            geschlossen ist.
+          default: ""
+          selector:
+            entity:
+              filter:
+                - domain: cover
+
+        max_cover_position:
+          name: Maximale Rolloöffnung
+          description: >
+            Bis einschließlich dieses Werts gilt das Rollo als ausreichend
+            geschlossen.
+          default: 5
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 1
+              unit_of_measurement: "%"
+
+    operating_modes:
+      name: Betriebsmodi
+      icon: mdi:home-account
+      collapsed: true
+      input:
+        guest_mode:
+          name: Gästemodus
+          description: >
+            Bei ON verändert die Automatik die Klimaanlage nicht.
+          default: input_boolean.gastemodus
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+
+        away_vacation:
+          name: Abwesend / Urlaub
+          description: >
+            Bei ON wird die Klimaanlage ausgeschaltet, sofern der globale
+            Hauptschalter eingeschaltet ist.
+          default: input_boolean.abwesend_urlaub
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+
+    override_settings:
+      name: Übersteuerung
+      icon: mdi:hand-back-right
+      collapsed: true
+      input:
+        override_automations:
+          name: Übersteuernde Automationen
+          description: >
+            Wurde eine dieser Automationen innerhalb der Übersteuerungsdauer
+            ausgeführt, greift die normale Klimaautomatik nicht ein.
+            Eine leere Liste deaktiviert diese Prüfung.
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain: automation
+
+        override_buttons:
+          name: Übersteuernde Buttons / Events
+          description: >
+            Wird eine dieser Button-/Event-Entitäten ausgelöst, greift die
+            normale Klimaautomatik für die Übersteuerungsdauer nicht ein.
+            Eine leere Liste deaktiviert diese Prüfung.
+          default: []
+          selector:
+            entity:
+              multiple: true
+              filter:
+                - domain:
+                    - event
+                    - button
+                    - input_button
+
+        override_duration:
+          name: Dauer der Übersteuerung
+          description: >
+            Dauer in Minuten. Jede erneute manuelle Bedienung startet die
+            Übersteuerungszeit erneut.
+          default: 60
+          selector:
+            number:
+              min: 1
+              max: 360
+              step: 5
+              unit_of_measurement: "min"
+              mode: box
+
+    timing_settings:
+      name: Zeitsteuerung
+      icon: mdi:timer-cog-outline
+      collapsed: true
+      input:
+        minimum_runtime:
+          name: Mindestlaufzeit
+          description: >
+            Mindestlaufzeit in Minuten vor einem normalen temperaturbedingten
+            Ausschalten. Sicherheitsabschaltungen ignorieren diese Zeit.
+          default: 10
+          selector:
+            number:
+              min: 0
+              max: 120
+              step: 1
+              unit_of_measurement: "min"
+              mode: box
+
+        minimum_off_time:
+          name: Mindestausschaltzeit
+          description: >
+            Mindestzeit in Minuten, die die Anlage ausgeschaltet bleiben muss,
+            bevor sie automatisch wieder eingeschaltet werden darf.
+          default: 10
+          selector:
+            number:
+              min: 0
+              max: 120
+              step: 1
+              unit_of_measurement: "min"
+              mode: box
+
+        outdoor_temperature_off_delay:
+          name: Ausschaltverzögerung Außentemperatur
+          description: >
+            So lange muss die Außentemperatur dauerhaft kleiner oder gleich
+            der Solltemperatur sein, bevor eine laufende Anlage ausgeschaltet
+            wird.
+          default:
+            hours: 3
+          selector:
+            duration:
+              enable_day: false
+
+trigger_variables:
+  outdoor_temperature_sensor_var: !input outdoor_temperature_sensor
+  target_temperature_var: !input target_temperature
+
+triggers:
+  # Nach HA-Start blockiert dieser Lauf die Automation 10 Minuten.
+  - trigger: homeassistant
+    event: start
+    id: ha_start
+
+  # Globaler Hauptschalter: Änderungen sofort erkennen.
+  - trigger: state
+    entity_id: !input global_ac_switch
+    id: global_switch_change
+
+  # Normale Sensor-/Modusänderungen.
+  - trigger: state
+    entity_id: !input room_temperature_sensor
+    id: room_temperature
+
+  - trigger: state
+    entity_id: !input outdoor_temperature_sensor
+    id: outdoor_temperature
+
+  - trigger: state
+    entity_id: !input window_sensors
+    id: window_change
+
+  - trigger: state
+    entity_id: !input cover_entity
+    id: cover_change
+
+  - trigger: state
+    entity_id: !input guest_mode
+    id: guest_mode_change
+
+  - trigger: state
+    entity_id: !input away_vacation
+    id: away_change
+
+  # Änderungen an last_triggered der ausgewählten Automationen lösen ebenfalls
+  # einen Lauf aus. Bei leerer Liste ist die spätere Override-Prüfung inaktiv.
+  - trigger: state
+    entity_id: !input override_automations
+    id: override_automation
+
+  # event/button/input_button ändern ihren Zeitstempel bei Betätigung.
+  - trigger: state
+    entity_id: !input override_buttons
+    id: override_button
+
+  # Dauerhaft niedrige Außentemperatur.
+  - trigger: template
+    value_template: >
+      {{
+        states(outdoor_temperature_sensor_var) not in ['unknown', 'unavailable']
+        and
+        (states(outdoor_temperature_sensor_var) | float(999))
+          <= (target_temperature_var | float)
+      }}
+    for: !input outdoor_temperature_off_delay
+    id: outdoor_low_for_delay
+
+  # Fallback und Wiederaufnahme nach Mindest-/Override-Zeiten.
+  - trigger: time_pattern
+    minutes: "/1"
+    id: periodic_check
+
+variables:
+  climate_entity: !input climate_entity
+  global_ac_switch: !input global_ac_switch
+  room_temperature_sensor: !input room_temperature_sensor
+  outdoor_temperature_sensor: !input outdoor_temperature_sensor
+  window_sensors: !input window_sensors
+  cover_entity: !input cover_entity
+  guest_mode: !input guest_mode
+  away_vacation: !input away_vacation
+  override_automations: !input override_automations
+  override_buttons: !input override_buttons
+  override_duration: !input override_duration
+  target_temperature: !input target_temperature
+  temp0: !input temp0
+  temp1: !input temp1
+  temp2: !input temp2
+  temp3: !input temp3
+  max_cover_position: !input max_cover_position
+  fan_mode_low: !input fan_mode_low
+  fan_mode_medium: !input fan_mode_medium
+  fan_mode_high: !input fan_mode_high
+  minimum_runtime: !input minimum_runtime
+  minimum_off_time: !input minimum_off_time
+
+mode: queued
+max: 50
+max_exceeded: silent
+
+actions:
+  # -------------------------------------------------------------------------
+  # HA-STARTSCHUTZ
+  #
+  # Da mode=queued verwendet wird, blockiert der HA-Startlauf die Ausführung
+  # aller weiteren Läufe für 10 Minuten. Danach werden die aktuellen Zustände
+  # neu bewertet. Während der ersten 10 Minuten erfolgt keine Klimasteuerung.
+  # -------------------------------------------------------------------------
+  - if:
+      - condition: trigger
+        id: ha_start
+    then:
+      - delay:
+          minutes: 10
+
+  # -------------------------------------------------------------------------
+  # AKTUELLE ZUSTÄNDE
+  # -------------------------------------------------------------------------
+  - variables:
+      room_temp: >
+        {% if states(room_temperature_sensor) in ['unknown', 'unavailable'] %}
+          {{ none }}
+        {% else %}
+          {{ states(room_temperature_sensor) | float }}
+        {% endif %}
+
+      outdoor_temp: >
+        {% if states(outdoor_temperature_sensor) in ['unknown', 'unavailable'] %}
+          {{ none }}
+        {% else %}
+          {{ states(outdoor_temperature_sensor) | float }}
+        {% endif %}
+
+      climate_state: "{{ states(climate_entity) }}"
+
+      climate_running: >
+        {{ states(climate_entity) not in ['off', 'unknown', 'unavailable'] }}
+
+      windows_open: >
+        {% set ns = namespace(open=false) %}
+        {% for entity in window_sensors %}
+          {% if is_state(entity, 'on') %}
+            {% set ns.open = true %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.open }}
+
+      windows_valid: >
+        {% set ns = namespace(valid=true) %}
+        {% for entity in window_sensors %}
+          {% if states(entity) in ['unknown', 'unavailable'] %}
+            {% set ns.valid = false %}
+          {% endif %}
+        {% endfor %}
+        {{ ns.valid }}
+
+      cover_closed_enough: >
+        {% if cover_entity | length == 0 %}
+          {{ false }}
+        {% else %}
+          {% set position = state_attr(cover_entity, 'current_position') %}
+          {{
+            position is not none
+            and
+            (position | float) <= (max_cover_position | float)
+          }}
+        {% endif %}
+
+      global_switch_ready: >
+        {{
+          is_state(global_ac_switch, 'on')
+          and
+          (
+            as_timestamp(now())
+            - as_timestamp(states[global_ac_switch].last_changed)
+          ) >= 600
+        }}
+
+      minimum_runtime_reached: >
+        {{
+          (
+            as_timestamp(now())
+            - as_timestamp(states[climate_entity].last_changed)
+          ) >= ((minimum_runtime | float(0)) * 60)
+        }}
+
+      minimum_off_reached: >
+        {{
+          (
+            as_timestamp(now())
+            - as_timestamp(states[climate_entity].last_changed)
+          ) >= ((minimum_off_time | float(0)) * 60)
+        }}
+
+      override_configured: >
+        {{
+          (override_automations | count > 0)
+          or
+          (override_buttons | count > 0)
+        }}
+
+      latest_override_timestamp: >
+        {% set ns = namespace(ts=0) %}
+
+        {% for entity in override_automations %}
+          {% set value = state_attr(entity, 'last_triggered') %}
+          {% if value is not none %}
+            {% set ts = as_timestamp(value, 0) %}
+            {% if ts > ns.ts %}
+              {% set ns.ts = ts %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+
+        {% for entity in override_buttons %}
+          {% set value = states(entity) %}
+          {% if value not in ['unknown', 'unavailable', 'none', ''] %}
+            {% set ts = as_timestamp(value, 0) %}
+            {% if ts > ns.ts %}
+              {% set ns.ts = ts %}
+            {% endif %}
+          {% endif %}
+        {% endfor %}
+
+        {{ ns.ts }}
+
+      override_active: >
+        {{
+          override_configured
+          and
+          (latest_override_timestamp | float(0)) > 0
+          and
+          (
+            as_timestamp(now())
+            - (latest_override_timestamp | float(0))
+          ) < ((override_duration | float(60)) * 60)
+        }}
+
+  # =========================================================================
+  # PRIORITÄT 1: GLOBALER HAUPTSCHALTER
+  # =========================================================================
+  - if:
+      - condition: template
+        value_template: "{{ not is_state(global_ac_switch, 'on') }}"
+    then:
+      - stop: "Globaler Klimaanlagen-Hauptschalter ist AUS."
+
+  # Nach OFF -> ON mindestens 10 Minuten warten.
+  - if:
+      - condition: template
+        value_template: "{{ not global_switch_ready }}"
+    then:
+      - stop: "Globaler Hauptschalter ist noch keine 10 Minuten eingeschaltet."
+
+  # =========================================================================
+  # PRIORITÄT 2: ABWESEND / URLAUB
+  # =========================================================================
+  - if:
+      - condition: state
+        entity_id: !input away_vacation
+        state: "on"
+    then:
+      - if:
+          - condition: template
+            value_template: "{{ climate_running }}"
+        then:
+          - action: climate.turn_off
+            target:
+              entity_id: !input climate_entity
+      - stop: "Abwesend/Urlaub aktiv."
+
+  # =========================================================================
+  # PRIORITÄT 3: FENSTER / ROLLO
+  #
+  # Diese Sicherheitsfunktion bleibt auch während einer manuellen
+  # Übersteuerung aktiv.
+  # =========================================================================
+  - if:
+      - condition: template
+        value_template: >
+          {{ windows_open and not cover_closed_enough }}
+    then:
+      - if:
+          - condition: template
+            value_template: "{{ climate_running }}"
+        then:
+          - action: climate.turn_off
+            target:
+              entity_id: !input climate_entity
+      - stop: "Fenster offen und Rollo nicht ausreichend geschlossen."
+
+  # Unbekannter Fenstersensor: keine automatische Änderung.
+  - if:
+      - condition: template
+        value_template: "{{ not windows_valid }}"
+    then:
+      - stop: "Mindestens ein Fenstersensor ist nicht verfügbar."
+
+  # =========================================================================
+  # PRIORITÄT 4: GÄSTEMODUS
+  # =========================================================================
+  - if:
+      - condition: state
+        entity_id: !input guest_mode
+        state: "on"
+    then:
+      - stop: "Gästemodus aktiv – keine automatische Änderung."
+
+  # =========================================================================
+  # PRIORITÄT 5: MANUELLE ÜBERSTEUERUNG
+  # =========================================================================
+  - if:
+      - condition: template
+        value_template: "{{ override_active }}"
+    then:
+      - stop: "Manuelle Übersteuerung aktiv."
+
+  # =========================================================================
+  # TEMPERATURSENSOREN
+  # =========================================================================
+  - if:
+      - condition: template
+        value_template: "{{ room_temp is none or outdoor_temp is none }}"
+    then:
+      - stop: "Raum- oder Außentemperatur ist nicht verfügbar."
+
+  # =========================================================================
+  # AUSSENTEMPERATUR: VERZÖGERTES AUSSCHALTEN
+  #
+  # Der spezielle Template-Trigger feuert erst, wenn Außen <= Solltemperatur
+  # für die konfigurierte Dauer ununterbrochen erfüllt war.
+  # =========================================================================
+  - if:
+      - condition: trigger
+        id: outdoor_low_for_delay
+    then:
+      - if:
+          - condition: template
+            value_template: "{{ climate_running }}"
+        then:
+          - action: climate.turn_off
+            target:
+              entity_id: !input climate_entity
+      - stop: "Außentemperatur dauerhaft <= Solltemperatur."
+
+  # =========================================================================
+  # TEMP0: NORMALES AUSSCHALTEN
+  # =========================================================================
+  - if:
+      - condition: template
+        value_template: >
+          {{ climate_running and room_temp <= (temp0 | float) }}
+    then:
+      - if:
+          - condition: template
+            value_template: "{{ minimum_runtime_reached }}"
+        then:
+          - action: climate.turn_off
+            target:
+              entity_id: !input climate_entity
+          - stop: "Temp0 erreicht – Klimaanlage AUS."
+        else:
+          - stop: "Temp0 erreicht, Mindestlaufzeit noch nicht abgelaufen."
+
+  # =========================================================================
+  # HYSTERESE: TEMP0 < RAUM < TEMP1
+  # =========================================================================
+  - if:
+      - condition: template
+        value_template: >
+          {{
+            room_temp > (temp0 | float)
+            and
+            room_temp < (temp1 | float)
+          }}
+    then:
+      - stop: "Temperatur im Hysteresebereich."
+
+  # =========================================================================
+  # AUSSENTEMPERATUR: EINSCHALTSPERRE
+  # =========================================================================
+  - if:
+      - condition: template
+        value_template: >
+          {{
+            not climate_running
+            and
+            outdoor_temp <= (target_temperature | float)
+          }}
+    then:
+      - stop: "Außentemperatur <= Solltemperatur – Klima bleibt AUS."
+
+  # =========================================================================
+  # MINDESTAUSSCHALTZEIT
+  # =========================================================================
+  - if:
+      - condition: template
+        value_template: >
+          {{ not climate_running and not minimum_off_reached }}
+    then:
+      - stop: "Mindestausschaltzeit noch nicht erreicht."
+
+  # =========================================================================
+  # TEMPERATURSTUFEN
+  # =========================================================================
+  - choose:
+      - conditions:
+          - condition: template
+            value_template: "{{ room_temp >= (temp3 | float) }}"
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: cool
+          - action: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: !input target_temperature
+          - action: climate.set_fan_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              fan_mode: "{{ fan_mode_high }}"
+
+      - conditions:
+          - condition: template
+            value_template: >
+              {{
+                room_temp >= (temp2 | float)
+                and
+                room_temp < (temp3 | float)
+              }}
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: cool
+          - action: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: !input target_temperature
+          - action: climate.set_fan_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              fan_mode: "{{ fan_mode_medium }}"
+
+      - conditions:
+          - condition: template
+            value_template: >
+              {{
+                room_temp >= (temp1 | float)
+                and
+                room_temp < (temp2 | float)
+              }}
+        sequence:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: cool
+          - action: climate.set_temperature
+            target:
+              entity_id: !input climate_entity
+            data:
+              temperature: !input target_temperature
+          - action: climate.set_fan_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              fan_mode: "{{ fan_mode_low }}"

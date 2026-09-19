@@ -1,31 +1,27 @@
 # =============================================================================
 # ShutterCoverAutomation.yml
 #
-# VERSION: 0.1.0
+# VERSION: 0.3.3
 #
-# Features
-# --------
+# Home Assistant Blueprint zur automatischen Steuerung von Rollläden
+# an Fenstern und Türen.
 #
-# - Sunrise / Sunset
-# - Workday Sensor
-# - Feiertage über Workday Sensor
-# - Früheste Öffnungszeiten
-# - Türschutz
-# - Verzögerung nach Türschließung
-# - Manuelle Übersteuerung über Shelly Inputs
-# - Kühlung
-# - Azimutbasierte Beschattung
-# - Globalbeschattung ab 28°C
-# - Logbook Integration
-# - Beschattung aufheben 1h vor Sonnenuntergang
+# =============================================================================
 #
+# COVER-POSITION
+#
+#     0 = vollständig geschlossen
+#   100 = vollständig geöffnet
+#
+# =============================================================================
 # PRIORITÄTEN
+# =============================================================================
 #
-# 1. Manual Override
-# 2. Aussperrschutz
-# 3. Globalbeschattung >= 28°C
-# 4. Normale Beschattung
-# 5. Sunrise / Sunset
+# 1. Aussperr-/Fensterschutz
+# 2. Manuelle Übersteuerung
+# 3. Zusätzlicher Schließwunsch durch Referenz-Rollo
+# 4. Globalbeschattung
+# 5. Normaler Tages-/Nachtbetrieb
 #
 # =============================================================================
 
@@ -34,48 +30,1348 @@ blueprint:
   name: Shutter Cover Automation Enterprise
 
   description: >
-
-    Enterprise Blueprint für Rollos:
-
-    - Sunrise/Sunset
-    - Workday Sensor
-    - Holiday Support
-    - Manual Override
-    - Cooling
-    - Global Shading
-    - Azimuth Profiles
-    - Logbook Integration
+    Automatische Rollladensteuerung mit Sonnenaufgang/Sonnenuntergang,
+    Workday-Unterstützung, Aussperr-/Lüftungsschutz, manueller
+    Übersteuerung, temperatur-/bewölkungsabhängiger Globalbeschattung
+    und optionalem Referenz-Rollo als zusätzlichem Schließ-Trigger.
 
   domain: automation
+
   author: Jonny.S@gmx.de
+
   homeassistant:
     min_version: 2026.8.0
+
   source_url: https://raw.githubusercontent.com/elbrondor/MyBlueprints/refs/heads/master/ShutterCoverAutomation.yml
 
-# =============================================================================
-# INPUTS
-# =============================================================================
+
+  # ===========================================================================
+  # INPUTS
+  # ===========================================================================
 
   input:
+
+
+    # =========================================================================
+    # GRUNDEINSTELLUNGEN
+    # =========================================================================
+
     assignment_section:
+
       name: Grundeinstellungen
-      description: Grundlegende Einstellungen für das zu Steuernde Rollo
-      icon: mdi:vector-link
+
+      icon: mdi:window-shutter
+
       input:
+
+
         my_cover:
+
           name: Rollo
-          description: Das zu Steuernde Rollo
+
+          description: >
+            Der zu steuernde Rollladen.
+
+            0 %   = vollständig geschlossen
+            100 % = vollständig geöffnet
+
           selector:
             entity:
               domain:
-              - cover
+                - cover
               multiple: false
-              reorder: false
+
+
+        my_window_open_sensor:
+
+          name: Fenster-/Türsensor (2 Zustände)
+
+          description: >
+            Optionaler einfacher Fenster-/Türkontakt.
+
+            on  = geöffnet
+            off = geschlossen
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - binary_sensor
+                  device_class:
+                    - door
+                    - window
+              multiple: true
+
+
+        my_window_handle_sensor:
+
+          name: Fenster-/Türgriff (3 Zustände)
+
+          description: >
+            Optionaler Sensor mit:
+
+            open
+            tilted
+            closed
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - sensor
+              multiple: true
+
+
+        my_cover_local_input_1:
+
+          name: Lokaler Rollladenschalter 1
+
+          description: >
+            Optionaler Sensor zur Erkennung einer manuellen Bedienung.
+
+            Nach einer Zustandsänderung wird die normale Automatik
+            für 15 Minuten unterdrückt.
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - binary_sensor
+                - domain:
+                    - sensor
+              multiple: true
+
+
+        my_cover_local_input_2:
+
+          name: Lokaler Rollladenschalter 2
+
+          description: >
+            Optionaler zweiter Eingang für getrennte Auf-/Ab-Taster.
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - binary_sensor
+                - domain:
+                    - sensor
+              multiple: true
+
+
+        my_protection_close_percentage:
+
+          name: Maximale Schließung bei Fenster-/Türschutz
+
+          description: >
+            Gibt an, wie weit der Rollladen bei gekipptem Fenster
+            oder geöffnetem Zwei-Zustands-Sensor maximal geschlossen
+            sein darf.
+
+            Beispiel:
+
+            60 % geschlossen entspricht einer Cover-Position von 40 %.
+
+          default: 60
+
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 5
+              unit_of_measurement: "%"
+              mode: slider
+
+
+        my_protection_delay:
+
+          name: Verzögerung Fenster-/Türschutz
+
+          description: >
+            Wie lange muss der neue Fenster-/Türzustand stabil
+            anliegen, bevor darauf reagiert wird?
+
+          default: 10
+
+          selector:
+            number:
+              min: 0
+              max: 60
+              step: 1
+              unit_of_measurement: "s"
+              mode: slider
+
+
+
+    # =========================================================================
+    # WOCHENTAGE / WOCHENENDE / FEIERTAGE
+    # =========================================================================
+
+    week_modifier_section:
+
+      name: Wochenende und Feiertage
+
+      icon: mdi:calendar-week
+
+      input:
+
+
+        my_is_workday:
+
+          name: Workday Sensor
+
+          description: >
+            on  = Arbeitstag
+            off = Wochenende oder Feiertag
+
+          default: binary_sensor.workday_sensor
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - binary_sensor
+              multiple: false
+
+
+        my_early_open_wd:
+
+          name: Frühestes Öffnen an Arbeitstagen
+
+          default: "07:00:00"
+
+          selector:
+            time:
+
+
+        my_early_open_we:
+
+          name: Frühestes Öffnen am Wochenende / Feiertag
+
+          default: "08:00:00"
+
+          selector:
+            time:
+
+
+
+    # =========================================================================
+    # SONNENUNTERGANG
+    # =========================================================================
+
+    sunset_section:
+
+      name: Sonnenuntergang
+
+      icon: mdi:weather-sunset-down
+
+      input:
+
+
+        my_down_offset:
+
+          name: Offset zum Sonnenuntergang
+
+          description: >
+            Beispiele:
+
+            -01:00:00 = eine Stunde vorher
+            -00:30:00 = 30 Minuten vorher
+             00:00:00 = genau bei Sonnenuntergang
+             00:30:00 = 30 Minuten danach
+             01:00:00 = eine Stunde danach
+
+          default: "00:00:00"
+
+          selector:
+            text:
+
+
+
+    # =========================================================================
+    # ZUSÄTZLICHER SCHLIESS-TRIGGER
+    # =========================================================================
+
+    additional_close_section:
+
+      name: Zusätzlicher Schließ-Trigger
+
+      description: >
+        Optional kann ein anderes Rollo als zusätzlicher Schließgeber
+        verwendet werden.
+
+        Ist dieses Referenz-Rollo nach dem tatsächlichen Sonnenuntergang
+        geschlossen, wird auch dieses Rollo geschlossen.
+
+        Der Fenster-/Türschutz bleibt dabei aktiv.
+
+      icon: mdi:window-shutter-alert
+
+      collapsed: true
+
+      input:
+
+
+        my_close_reference_cover_enabled:
+
+          name: Referenz-Rollo verwenden
+
+          description: >
+            Aktiviert das zusätzliche Schließen über ein anderes Rollo.
+
+          default: false
+
+          selector:
+            boolean:
+
+
+        my_close_reference_cover:
+
+          name: Referenz-Rollo
+
+          description: >
+            Optionales Rollo, dessen Schließen nach Sonnenuntergang
+            ebenfalls das Schließen dieses Rollos auslöst.
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - cover
+              multiple: true
+
+
+
+    # =========================================================================
+    # GLOBALBESCHATTUNG
+    # =========================================================================
+
+    global_shading_section:
+
+      name: Globalbeschattung
+
+      description: >
+        Temperatur-, Raumtemperatur- und bewölkungsabhängige
+        Globalbeschattung.
+
+      icon: mdi:weather-sunny-alert
+
+      collapsed: true
+
+      input:
+
+
+        my_global_shading_enabled:
+
+          name: Globalbeschattung aktivieren
+
+          default: true
+
+          selector:
+            boolean:
+
+
+        my_outdoor_temperature:
+
+          name: Außentemperatur
+
+          description: >
+            Sensor für die aktuelle Außentemperatur.
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - sensor
+                  device_class:
+                    - temperature
+              multiple: true
+
+
+        my_global_shading_temperature:
+
+          name: Temperaturgrenze außen
+
+          description: >
+            Ab dieser Außentemperatur darf die Globalbeschattung
+            aktiviert werden.
+
+          default: 28
+
+          selector:
+            number:
+              min: 15
+              max: 40
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+
+        my_weather:
+
+          name: Wetter
+
+          description: >
+            Wetter-Entität zur Ermittlung des Attributes cloud_coverage.
+
+          default: weather.forecast_home
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - weather
+              multiple: false
+
+
+        my_global_shading_cloud_coverage:
+
+          name: Maximale Bewölkung
+
+          description: >
+            Bis zu diesem Bewölkungsgrad darf die Globalbeschattung
+            aktiviert werden.
+
+            0 %   = wolkenlos
+            100 % = vollständig bewölkt
+
+          default: 40
+
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 5
+              unit_of_measurement: "%"
+              mode: slider
+
+
+        my_room_temperature:
+
+          name: Raumtemperatur
+
+          description: >
+            Optionaler Temperatursensor für den Raum.
+
+            Wird kein Sensor ausgewählt, wird die Raumtemperatur
+            nicht berücksichtigt.
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - sensor
+                  device_class:
+                    - temperature
+              multiple: true
+
+
+        my_global_shading_room_temperature:
+
+          name: Mindest-Raumtemperatur
+
+          description: >
+            Erst ab dieser Raumtemperatur darf die Globalbeschattung
+            aktiviert werden.
+
+            Wird kein Raumtemperatursensor verwendet, hat dieser
+            Wert keine Auswirkung.
+
+          default: 23
+
+          selector:
+            number:
+              min: 15
+              max: 35
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+
+        my_global_shading_position:
+
+          name: Rollladenposition bei Globalbeschattung
+
+          description: >
+            0 %   = vollständig geschlossen
+            100 % = vollständig geöffnet
+
+          default: 30
+
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 5
+              unit_of_measurement: "%"
+              mode: slider
 
 
 
 # =============================================================================
-# MODE
+# TRIGGER
+# =============================================================================
+
+triggers:
+
+
+  # ---------------------------------------------------------------------------
+  # SONNENAUFGANG
+  # ---------------------------------------------------------------------------
+
+  - trigger: sun
+    event: sunrise
+    id: sunrise
+
+
+  # ---------------------------------------------------------------------------
+  # FRÜHESTE ÖFFNUNGSZEITEN
+  # ---------------------------------------------------------------------------
+
+  - trigger: time
+    at: !input my_early_open_wd
+    id: early_open_wd
+
+
+  - trigger: time
+    at: !input my_early_open_we
+    id: early_open_we
+
+
+  # ---------------------------------------------------------------------------
+  # SONNENUNTERGANG + OFFSET
+  # ---------------------------------------------------------------------------
+
+  - trigger: sun
+    event: sunset
+    offset: !input my_down_offset
+    id: sunset
+
+
+  # ---------------------------------------------------------------------------
+  # REFERENZ-ROLLO
+  #
+  # Die Prüfung, ob tatsächlich bereits Sonnenuntergang war,
+  # erfolgt später in reference_cover_requests_close.
+  # ---------------------------------------------------------------------------
+
+  - trigger: state
+    entity_id: !input my_close_reference_cover
+    to: "closed"
+    id: reference_cover_closed
+
+
+  # ---------------------------------------------------------------------------
+  # DREI-ZUSTANDS-SENSOR
+  # ---------------------------------------------------------------------------
+
+  - trigger: state
+    entity_id: !input my_window_handle_sensor
+    to: "open"
+    for:
+      seconds: !input my_protection_delay
+    id: handle_open
+
+
+  - trigger: state
+    entity_id: !input my_window_handle_sensor
+    to: "tilted"
+    for:
+      seconds: !input my_protection_delay
+    id: handle_tilted
+
+
+  - trigger: state
+    entity_id: !input my_window_handle_sensor
+    to: "closed"
+    for:
+      seconds: !input my_protection_delay
+    id: handle_closed
+
+
+  # ---------------------------------------------------------------------------
+  # ZWEI-ZUSTANDS-SENSOR
+  # ---------------------------------------------------------------------------
+
+  - trigger: state
+    entity_id: !input my_window_open_sensor
+    to: "on"
+    for:
+      seconds: !input my_protection_delay
+    id: window_open
+
+
+  - trigger: state
+    entity_id: !input my_window_open_sensor
+    to: "off"
+    for:
+      seconds: !input my_protection_delay
+    id: window_closed
+
+
+  # ---------------------------------------------------------------------------
+  # AUSSENTEMPERATUR
+  # ---------------------------------------------------------------------------
+
+  - trigger: state
+    entity_id: !input my_outdoor_temperature
+    id: global_shading_temperature_change
+
+
+  # ---------------------------------------------------------------------------
+  # RAUMTEMPERATUR
+  # ---------------------------------------------------------------------------
+
+  - trigger: state
+    entity_id: !input my_room_temperature
+    id: global_shading_room_temperature_change
+
+
+  # ---------------------------------------------------------------------------
+  # BEWÖLKUNG
+  # ---------------------------------------------------------------------------
+
+  - trigger: state
+    entity_id: !input my_weather
+    attribute: cloud_coverage
+    id: global_shading_cloud_change
+
+
+
+# =============================================================================
+# VARIABLEN
+# =============================================================================
+
+variables:
+
+
+  # ===========================================================================
+  # ENTITÄTEN
+  # ===========================================================================
+
+  cover_entity: !input my_cover
+
+  window_open_sensor: !input my_window_open_sensor
+  window_handle_sensor: !input my_window_handle_sensor
+
+  local_input_1: !input my_cover_local_input_1
+  local_input_2: !input my_cover_local_input_2
+
+  workday_sensor: !input my_is_workday
+
+  close_reference_cover: !input my_close_reference_cover
+
+  outdoor_temperature_entities: !input my_outdoor_temperature
+  room_temperature_entities: !input my_room_temperature
+
+  weather_entity: !input my_weather
+
+
+  # ===========================================================================
+  # KONFIGURATION
+  # ===========================================================================
+
+  early_open_wd: !input my_early_open_wd
+  early_open_we: !input my_early_open_we
+
+  sunset_offset: !input my_down_offset
+
+  protection_close_percentage: !input my_protection_close_percentage
+
+  close_reference_cover_enabled: !input my_close_reference_cover_enabled
+
+  global_shading_enabled: !input my_global_shading_enabled
+  global_shading_temperature: !input my_global_shading_temperature
+  global_shading_cloud_coverage: !input my_global_shading_cloud_coverage
+  global_shading_room_temperature: !input my_global_shading_room_temperature
+  global_shading_position: !input my_global_shading_position
+
+
+  # ===========================================================================
+  # SCHUTZPOSITION
+  #
+  # Beispiel:
+  #
+  # 60 % maximale Schließung
+  #
+  # -> Cover-Position 40
+  # ===========================================================================
+
+  protection_position: >
+    {{ 100 - (protection_close_percentage | int(60)) }}
+
+
+  # ===========================================================================
+  # AKTUELLE ROLLLADENPOSITION
+  # ===========================================================================
+
+  current_cover_position: >
+    {{ state_attr(cover_entity, 'current_position') | int(0) }}
+
+
+  # ===========================================================================
+  # MANUELLE ÜBERSTEUERUNG
+  #
+  # Jede Änderung eines lokalen Eingangs innerhalb der letzten
+  # 15 Minuten gilt als manuelle Bedienung.
+  #
+  # 15 Minuten = 900 Sekunden
+  # ===========================================================================
+
+  manual_override: >
+    {% set ns = namespace(active=false) %}
+
+    {% for entity in local_input_1 %}
+
+      {% if states[entity] is defined %}
+
+        {% if
+          (now() - states[entity].last_changed).total_seconds()
+          <
+          900
+        %}
+
+          {% set ns.active = true %}
+
+        {% endif %}
+
+      {% endif %}
+
+    {% endfor %}
+
+
+    {% for entity in local_input_2 %}
+
+      {% if states[entity] is defined %}
+
+        {% if
+          (now() - states[entity].last_changed).total_seconds()
+          <
+          900
+        %}
+
+          {% set ns.active = true %}
+
+        {% endif %}
+
+      {% endif %}
+
+    {% endfor %}
+
+
+    {{ ns.active }}
+
+
+  # ===========================================================================
+  # SUNSET-OFFSET IN SEKUNDEN
+  # ===========================================================================
+
+  sunset_offset_seconds: >
+    {% set value = sunset_offset | string %}
+
+    {% if value.startswith('-') %}
+
+      {% set sign = -1 %}
+      {% set value = value[1:] %}
+
+    {% elif value.startswith('+') %}
+
+      {% set sign = 1 %}
+      {% set value = value[1:] %}
+
+    {% else %}
+
+      {% set sign = 1 %}
+
+    {% endif %}
+
+
+    {% set parts = value.split(':') %}
+
+
+    {{
+      sign *
+      (
+        (parts[0] | int(0)) * 3600
+        +
+        (parts[1] | int(0)) * 60
+        +
+        (parts[2] | int(0))
+      )
+    }}
+
+
+  # ===========================================================================
+  # TAGESBETRIEB
+  #
+  # Beginn:
+  #
+  #   Sonnenaufgang UND früheste Öffnungszeit erreicht
+  #
+  # Ende:
+  #
+  #   Sonnenuntergang + Offset
+  # ===========================================================================
+
+  daytime_active: >
+    {% set offset = sunset_offset_seconds | int(0) %}
+
+
+    {% if is_state(workday_sensor, 'on') %}
+
+      {% set earliest_open = today_at(early_open_wd) %}
+
+    {% else %}
+
+      {% set earliest_open = today_at(early_open_we) %}
+
+    {% endif %}
+
+
+    {% if now() < earliest_open %}
+
+      false
+
+
+    {% elif is_state('sun.sun', 'above_horizon') %}
+
+
+      {# Negativer Offset: Tagesende liegt vor Sonnenuntergang #}
+
+      {% if offset < 0 %}
+
+        {% set next_setting =
+             as_datetime(state_attr('sun.sun', 'next_setting'))
+             | as_local %}
+
+        {{
+          now()
+          <
+          (
+            next_setting
+            +
+            timedelta(seconds=offset)
+          )
+        }}
+
+
+      {% else %}
+
+        true
+
+      {% endif %}
+
+
+    {% else %}
+
+
+      {# Positiver Offset: Tagesende liegt nach Sonnenuntergang #}
+
+      {% if offset > 0 %}
+
+        {{
+          now()
+          <
+          (
+            states['sun.sun'].last_changed
+            +
+            timedelta(seconds=offset)
+          )
+        }}
+
+
+      {% else %}
+
+        false
+
+      {% endif %}
+
+    {% endif %}
+
+
+  # ===========================================================================
+  # REFERENZ-ROLLO FORDERT SCHLIESSEN
+  #
+  # Die Bedingung bleibt bestehen und gilt NICHT nur im Moment
+  # des Triggers.
+  #
+  # Voraussetzungen:
+  #
+  #   Funktion aktiviert
+  #
+  # UND
+  #
+  #   Referenz-Rollo konfiguriert
+  #
+  # UND
+  #
+  #   tatsächlicher Sonnenuntergang bereits erfolgt
+  #
+  # UND
+  #
+  #   Referenz-Rollo geschlossen
+  #
+  #
+  # WICHTIG:
+  #
+  # Ein positiver Sunset-Offset wird dadurch bewusst überstimmt.
+  #
+  # Beispiel:
+  #
+  #   Sonnenuntergang      19:30
+  #   Offset              +00:45
+  #   normales Schließen   20:15
+  #
+  #   Referenz-Rollo
+  #   geschlossen          19:50
+  #
+  #   -> bereits um 19:50 schließen
+  #
+  # ===========================================================================
+
+  reference_cover_requests_close: >
+    {{
+      close_reference_cover_enabled | bool
+      and
+      close_reference_cover | length > 0
+      and
+      is_state('sun.sun', 'below_horizon')
+      and
+      (
+        expand(close_reference_cover)
+        | selectattr('state', 'eq', 'closed')
+        | list
+        | count > 0
+      )
+    }}
+
+
+  # ===========================================================================
+  # AUSSENTEMPERATUR
+  # ===========================================================================
+
+  outdoor_temperature: >
+    {% if outdoor_temperature_entities | length > 0 %}
+
+      {{
+        states(outdoor_temperature_entities[0])
+        | float(-999)
+      }}
+
+    {% else %}
+
+      -999
+
+    {% endif %}
+
+
+  # ===========================================================================
+  # RAUMTEMPERATUR
+  # ===========================================================================
+
+  room_temperature: >
+    {% if room_temperature_entities | length > 0 %}
+
+      {{
+        states(room_temperature_entities[0])
+        | float(-999)
+      }}
+
+    {% else %}
+
+      -999
+
+    {% endif %}
+
+
+  # ===========================================================================
+  # RAUMTEMPERATUR ERLAUBT BESCHATTUNG?
+  #
+  # Kein Sensor:
+  #
+  #   true
+  #
+  # Sensor vorhanden:
+  #
+  #   Raumtemperatur >= Mindesttemperatur
+  # ===========================================================================
+
+  room_temperature_allows_shading: >
+    {{
+      (room_temperature_entities | length == 0)
+      or
+      (
+        (room_temperature | float(-999))
+        >=
+        (global_shading_room_temperature | float)
+      )
+    }}
+
+
+  # ===========================================================================
+  # BEWÖLKUNG
+  # ===========================================================================
+
+  cloud_coverage: >
+    {{
+      state_attr(weather_entity, 'cloud_coverage')
+      | float(100)
+    }}
+
+
+  # ===========================================================================
+  # GLOBALBESCHATTUNG
+  #
+  # Aktiv wenn:
+  #
+  #   Funktion aktiviert
+  #   UND Tagesbetrieb
+  #   UND Außentemperatur >= Grenzwert
+  #   UND Bewölkung <= Grenzwert
+  #   UND Raumtemperatur erlaubt Beschattung
+  # ===========================================================================
+
+  global_shading_active: >
+    {{
+      global_shading_enabled | bool
+      and
+      daytime_active | bool
+      and
+      (outdoor_temperature | float(-999))
+        >=
+      (global_shading_temperature | float)
+      and
+      (cloud_coverage | float(100))
+        <=
+      (global_shading_cloud_coverage | float)
+      and
+      room_temperature_allows_shading | bool
+    }}
+
+
+  # ===========================================================================
+  # NORMALER SOLLZUSTAND
+  #
+  # Reihenfolge:
+  #
+  # 1. Referenz-Rollo fordert Schließen -> 0
+  #
+  # 2. Nachtbetrieb -> 0
+  #
+  # 3. Globalbeschattung -> konfigurierte Position
+  #
+  # 4. normaler Tagesbetrieb -> 100
+  #
+  # ===========================================================================
+
+  desired_position: >
+    {% if reference_cover_requests_close | bool %}
+
+      0
+
+    {% elif not (daytime_active | bool) %}
+
+      0
+
+    {% elif global_shading_active | bool %}
+
+      {{ global_shading_position | int }}
+
+    {% else %}
+
+      100
+
+    {% endif %}
+
+
+  # ===========================================================================
+  # DREI-ZUSTANDS-SENSOR: OPEN
+  # ===========================================================================
+
+  handle_is_open: >
+    {{
+      window_handle_sensor | length > 0
+      and
+      expand(window_handle_sensor)
+        | selectattr('state', 'eq', 'open')
+        | list
+        | count > 0
+    }}
+
+
+  # ===========================================================================
+  # DREI-ZUSTANDS-SENSOR: TILTED
+  # ===========================================================================
+
+  handle_is_tilted: >
+    {{
+      window_handle_sensor | length > 0
+      and
+      expand(window_handle_sensor)
+        | selectattr('state', 'eq', 'tilted')
+        | list
+        | count > 0
+    }}
+
+
+  # ===========================================================================
+  # ZWEI-ZUSTANDS-SENSOR: OPEN
+  # ===========================================================================
+
+  window_is_open: >
+    {{
+      window_open_sensor | length > 0
+      and
+      expand(window_open_sensor)
+        | selectattr('state', 'eq', 'on')
+        | list
+        | count > 0
+    }}
+
+
+
+# =============================================================================
+# CONDITIONS
+# =============================================================================
+
+conditions: []
+
+
+
+# =============================================================================
+# ACTIONS
+# =============================================================================
+
+actions:
+
+
+  # ===========================================================================
+  # PRIORITÄT 1
+  #
+  # AUSSperrSCHUTZ
+  #
+  # Drei-Zustands-Sensor = OPEN
+  #
+  # Immer vollständig öffnen.
+  # Manual Override wird ignoriert.
+  # ===========================================================================
+
+  - choose:
+
+      - conditions:
+
+          - condition: trigger
+            id: handle_open
+
+        sequence:
+
+          - action: cover.open_cover
+
+            target:
+              entity_id: !input my_cover
+
+
+          - stop: >
+              Aussperrschutz:
+              Fenster/Tür vollständig geöffnet.
+              Rollladen vollständig geöffnet.
+
+
+
+  # ===========================================================================
+  # PRIORITÄT 1
+  #
+  # FENSTER-/LÜFTUNGSSCHUTZ
+  #
+  # Bei TILTED bzw. einfachem OPEN:
+  #
+  # Ist das Rollo weiter geschlossen als die Schutzposition,
+  # wird es bis zur Schutzposition geöffnet.
+  #
+  # Ein bereits weiter geöffnetes Rollo wird NICHT geschlossen.
+  # ===========================================================================
+
+  - choose:
+
+      - conditions:
+
+          - condition: trigger
+            id:
+              - handle_tilted
+              - window_open
+
+          - condition: template
+            value_template: >
+              {{
+                (state_attr(cover_entity, 'current_position') | int(0))
+                <
+                (protection_position | int)
+              }}
+
+        sequence:
+
+          - action: cover.set_cover_position
+
+            target:
+              entity_id: !input my_cover
+
+            data:
+              position: "{{ protection_position | int }}"
+
+
+          - stop: >
+              Fenster-/Lüftungsschutz:
+              Rollladen bis zur Schutzposition geöffnet.
+
+
+
+  # ===========================================================================
+  # WICHTIG:
+  #
+  # Wird TILTED / OPEN ausgelöst und das Rollo befindet sich bereits
+  # oberhalb der Schutzposition, darf dieses Ereignis das Rollo nicht
+  # nach unten fahren.
+  #
+  # Deshalb wird die Ausführung hier beendet.
+  # ===========================================================================
+
+  - choose:
+
+      - conditions:
+
+          - condition: trigger
+            id:
+              - handle_tilted
+              - window_open
+
+        sequence:
+
+          - stop: >
+              Fenster-/Lüftungsschutz bereits erfüllt.
+              Rollladen bleibt auf seiner aktuellen, weiter geöffneten Position.
+
+
+
+  # ===========================================================================
+  # PRIORITÄT 2
+  #
+  # MANUAL OVERRIDE
+  #
+  # Die sicherheitsrelevanten Fenster-/Türaktionen wurden bereits
+  # oberhalb behandelt.
+  #
+  # Normale automatische Bewegungen werden für 15 Minuten nach
+  # einer lokalen Bedienung unterdrückt.
+  # ===========================================================================
+
+  - if:
+
+      - condition: template
+        value_template: >
+          {{ manual_override | bool }}
+
+    then:
+
+      - stop: >
+          Manuelle Bedienung innerhalb der letzten 15 Minuten erkannt.
+          Automatische Positionsänderung unterdrückt.
+
+
+
+  # ===========================================================================
+  # ZIELPOSITION UNTER BERÜCKSICHTIGUNG DES FENSTERSCHUTZES
+  #
+  # handle OPEN:
+  #
+  #     100
+  #
+  # handle TILTED:
+  #
+  #     mindestens Schutzposition
+  #
+  # einfacher Sensor OPEN:
+  #
+  #     mindestens Schutzposition
+  #
+  # Sensor CLOSED / nicht vorhanden:
+  #
+  #     normaler Sollzustand
+  #
+  # ===========================================================================
+
+  - variables:
+
+      target_position: >
+        {% set desired = desired_position | int %}
+        {% set protection = protection_position | int %}
+
+        {% if handle_is_open | bool %}
+
+          100
+
+        {% elif handle_is_tilted | bool %}
+
+          {{ [desired, protection] | max }}
+
+        {% elif window_is_open | bool %}
+
+          {{ [desired, protection] | max }}
+
+        {% else %}
+
+          {{ desired }}
+
+        {% endif %}
+
+
+
+  # ===========================================================================
+  # NUR FAHREN, WENN IST != SOLL
+  # ===========================================================================
+
+  - condition: template
+
+    value_template: >
+      {{
+        (state_attr(cover_entity, 'current_position') | int(0))
+        !=
+        (target_position | int)
+      }}
+
+
+
+  # ===========================================================================
+  # ZIELPOSITION ANFAHREN
+  # ===========================================================================
+
+  - action: cover.set_cover_position
+
+    target:
+      entity_id: !input my_cover
+
+    data:
+      position: "{{ target_position | int }}"
+
+
+
+# =============================================================================
+# AUTOMATION MODE
 # =============================================================================
 
 mode: restart
+
+max_exceeded: silent
