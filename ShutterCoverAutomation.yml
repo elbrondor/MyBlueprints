@@ -1,7 +1,7 @@
 # =============================================================================
 # ShutterCoverAutomation.yml
 #
-# VERSION: 0.3.5
+# VERSION: 0.3.6
 #
 # Home Assistant Blueprint zur automatischen Steuerung von Rollläden.
 #
@@ -13,10 +13,9 @@
 #
 # 1. Aktiver Fenster-/Aussperrschutz
 # 2. Sonderfall Sonnenaufgang vor frühester Öffnungszeit
-# 3. Manuelle Übersteuerung
-# 4. Referenz-Rollo / zusätzlicher Schließwunsch
-# 5. Globalbeschattung
-# 6. Normaler Tages-/Nachtbetrieb
+# 3. Manuelle/externe Übersteuerung
+# 4. Globalbeschattung
+# 5. Normaler Tages-/Nachtbetrieb
 #
 # Fahrbefehle:
 # - maximal 10 Versuche
@@ -31,7 +30,7 @@ blueprint:
   description: >
     Automatische Rollladensteuerung mit Sonnenaufgang/Sonnenuntergang,
     Workday-Unterstützung, Aussperr-/Lüftungsschutz, manueller
-    Übersteuerung, Globalbeschattung, Referenz-Rollo, Schlafzimmer-
+    Übersteuerung, Globalbeschattung, Sunrise-Offset, Schlafzimmer-
     Sonderfunktion und automatischer Wiederholung fehlgeschlagener
     Fahrbefehle.
 
@@ -132,47 +131,6 @@ blueprint:
               multiple: true
 
 
-        my_cover_local_input_1:
-
-          name: Lokaler Rollladenschalter 1
-
-          description: >
-            Optionaler Sensor zur Erkennung einer manuellen Bedienung.
-
-            Nach einer Zustandsänderung wird die normale Automatik
-            für 15 Minuten unterdrückt.
-
-          default: []
-
-          selector:
-            entity:
-              filter:
-                - domain:
-                    - binary_sensor
-                - domain:
-                    - sensor
-              multiple: true
-
-
-        my_cover_local_input_2:
-
-          name: Lokaler Rollladenschalter 2
-
-          description: >
-            Optionaler zweiter Eingang für getrennte Auf-/Ab-Taster.
-
-          default: []
-
-          selector:
-            entity:
-              filter:
-                - domain:
-                    - binary_sensor
-                - domain:
-                    - sensor
-              multiple: true
-
-
         my_protection_close_percentage:
 
           name: Maximale Schließung bei Lüftungsschutz
@@ -215,6 +173,85 @@ blueprint:
               unit_of_measurement: "s"
               mode: slider
 
+
+
+
+    # =========================================================================
+    # ÜBERSTEUERUNG
+    # =========================================================================
+
+    override_section:
+
+      name: Übersteuerung
+
+      description: >
+        Einstellungen für die manuelle oder externe Übersteuerung.
+        Änderungen an ausgewählten Eingangs-Entitäten sowie das Ausführen
+        ausgewählter Automationen pausieren die normale Rollladenautomatik.
+        Der Fenster-/Aussperrschutz besitzt weiterhin höhere Priorität.
+
+      icon: mdi:hand-back-right
+
+      collapsed: true
+
+      input:
+
+        my_override_entities:
+
+          name: Lokale Rollladenschalter
+
+          description: >
+            Liste von Sensoren oder Eingängen, deren Zustandsänderung als
+            manuelle Bedienung gewertet wird.
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - binary_sensor
+                - domain:
+                    - sensor
+              multiple: true
+
+
+        my_override_automations:
+
+          name: Übersteuernde Automationen
+
+          description: >
+            Liste von Automationen, deren Ausführung die automatische
+            Rollladensteuerung für die konfigurierte Zeit übersteuert.
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - automation
+              multiple: true
+
+
+        my_override_duration:
+
+          name: Dauer der Übersteuerung
+
+          description: >
+            Dauer, für die nach einer manuellen Bedienung oder dem Ausführen
+            einer ausgewählten Automation die normale Rollladenautomatik
+            pausiert.
+
+          default: 15
+
+          selector:
+            number:
+              min: 1
+              max: 180
+              step: 1
+              unit_of_measurement: "min"
+              mode: box
 
 
     # =========================================================================
@@ -292,6 +329,28 @@ blueprint:
             time:
 
 
+
+        my_sunrise_offset:
+
+          name: Offset zum Sonnenaufgang
+
+          description: >
+            Verschiebt die automatische Öffnung relativ zum Sonnenaufgang.
+            Negative Werte öffnen früher, positive Werte später.
+            Die konfigurierte früheste Öffnungszeit wird niemals
+            unterschritten.
+
+            Beispiele:
+            -00:30:00 = 30 Minuten vor Sonnenaufgang
+             00:00:00 = genau bei Sonnenaufgang
+             00:30:00 = 30 Minuten nach Sonnenaufgang
+
+          default: "00:00:00"
+
+          selector:
+            text:
+
+
         my_keep_closed_between_sunrise_and_earliest_open:
 
           name: Bei frühem Sonnenaufgang geschlossen halten
@@ -353,58 +412,6 @@ blueprint:
           selector:
             text:
 
-
-
-    # =========================================================================
-    # ZUSÄTZLICHER SCHLIESS-TRIGGER
-    # =========================================================================
-
-    additional_close_section:
-
-      name: Zusätzlicher Schließ-Trigger
-
-      description: >
-        Optional kann ein anderes Rollo als zusätzlicher Schließgeber
-        verwendet werden.
-
-        Ist dieses Referenz-Rollo nach dem tatsächlichen Sonnenuntergang
-        geschlossen, wird auch dieses Rollo geschlossen.
-
-        Der Aussperr-/Fensterschutz bleibt dabei aktiv.
-
-      icon: mdi:window-shutter-alert
-
-      collapsed: true
-
-      input:
-
-
-        my_close_reference_cover_enabled:
-
-          name: Referenz-Rollo verwenden
-
-          default: false
-
-          selector:
-            boolean:
-
-
-        my_close_reference_cover:
-
-          name: Referenz-Rollo
-
-          description: >
-            Optionales Rollo, dessen Schließen nach Sonnenuntergang
-            ebenfalls das Schließen dieses Rollos auslöst.
-
-          default: []
-
-          selector:
-            entity:
-              filter:
-                - domain:
-                    - cover
-              multiple: true
 
 
 
@@ -583,9 +590,16 @@ triggers:
   # SONNENAUFGANG
   # ---------------------------------------------------------------------------
 
+  # Tatsächlicher Sonnenaufgang: nur für die Schlafzimmer-Sonderfunktion
   - trigger: sun
     event: sunrise
-    id: sunrise
+    id: actual_sunrise
+
+  # Normale Öffnungslogik mit konfigurierbarem Offset
+  - trigger: sun
+    event: sunrise
+    offset: !input my_sunrise_offset
+    id: sunrise_offset
 
 
   # ---------------------------------------------------------------------------
@@ -611,15 +625,6 @@ triggers:
     offset: !input my_down_offset
     id: sunset
 
-
-  # ---------------------------------------------------------------------------
-  # REFERENZ-ROLLO
-  # ---------------------------------------------------------------------------
-
-  - trigger: state
-    entity_id: !input my_close_reference_cover
-    to: "closed"
-    id: reference_cover_closed
 
 
   # ---------------------------------------------------------------------------
@@ -707,12 +712,11 @@ variables:
   window_open_sensor: !input my_window_open_sensor
   window_handle_sensor: !input my_window_handle_sensor
 
-  local_input_1: !input my_cover_local_input_1
-  local_input_2: !input my_cover_local_input_2
+  override_entities: !input my_override_entities
+  override_automations: !input my_override_automations
 
   workday_sensor: !input my_is_workday
 
-  close_reference_cover: !input my_close_reference_cover
 
   outdoor_temperature_entities: !input my_outdoor_temperature
   room_temperature_entities: !input my_room_temperature
@@ -727,14 +731,16 @@ variables:
   early_open_wd: !input my_early_open_wd
   early_open_we: !input my_early_open_we
 
+  sunrise_offset: !input my_sunrise_offset
   sunset_offset: !input my_down_offset
+
+  override_duration: !input my_override_duration
 
   protection_close_percentage: !input my_protection_close_percentage
 
   keep_closed_between_sunrise_and_earliest_open:
     !input my_keep_closed_between_sunrise_and_earliest_open
 
-  close_reference_cover_enabled: !input my_close_reference_cover_enabled
 
   global_shading_enabled: !input my_global_shading_enabled
   global_shading_temperature: !input my_global_shading_temperature
@@ -780,54 +786,68 @@ variables:
     {{
       keep_closed_between_sunrise_and_earliest_open | bool
       and
-      trigger.id == 'sunrise'
+      trigger.id == 'actual_sunrise'
       and
       now() < (earliest_open_today | as_datetime)
     }}
 
 
   # ===========================================================================
-  # MANUELLE ÜBERSTEUERUNG
+  # MANUELLE / EXTERNE ÜBERSTEUERUNG
   # ===========================================================================
 
   manual_override: >
     {% set ns = namespace(active=false) %}
+    {% set duration = (override_duration | int(15)) * 60 %}
 
-    {% for entity in local_input_1 %}
-
+    {% for entity in override_entities %}
       {% if states[entity] is defined %}
-
-        {% if
-          (now() - states[entity].last_changed).total_seconds()
-          <
-          900
-        %}
+        {% if (now() - states[entity].last_changed).total_seconds() < duration %}
           {% set ns.active = true %}
         {% endif %}
-
       {% endif %}
-
     {% endfor %}
 
-    {% for entity in local_input_2 %}
-
-      {% if states[entity] is defined %}
-
-        {% if
-          (now() - states[entity].last_changed).total_seconds()
-          <
-          900
-        %}
+    {% for entity in override_automations %}
+      {% set last_triggered = state_attr(entity, 'last_triggered') %}
+      {% if last_triggered is not none %}
+        {% if (now() - as_datetime(last_triggered)).total_seconds() < duration %}
           {% set ns.active = true %}
         {% endif %}
-
       {% endif %}
-
     {% endfor %}
 
     {{ ns.active }}
 
 
+  # ===========================================================================
+  # SUNRISE-OFFSET IN SEKUNDEN
+  # ===========================================================================
+
+  sunrise_offset_seconds: >
+    {% set value = sunrise_offset | string %}
+    {% if value.startswith('-') %}
+      {% set sign = -1 %}
+      {% set value = value[1:] %}
+    {% elif value.startswith('+') %}
+      {% set sign = 1 %}
+      {% set value = value[1:] %}
+    {% else %}
+      {% set sign = 1 %}
+    {% endif %}
+    {% set parts = value.split(':') %}
+    {{
+      sign *
+      (
+        (parts[0] | int(0)) * 3600
+        + (parts[1] | int(0)) * 60
+        + (parts[2] | int(0))
+      )
+    }}
+
+
+  # ===========================================================================
+  # SUNSET-OFFSET IN SEKUNDEN
   # ===========================================================================
   # SUNSET-OFFSET IN SEKUNDEN
   # ===========================================================================
@@ -861,10 +881,15 @@ variables:
 
   # ===========================================================================
   # TAGESBETRIEB
+  #
+  # Öffnungszeit = späterer Zeitpunkt aus:
+  # - Sonnenaufgang + Offset
+  # - frühester Öffnungszeit
   # ===========================================================================
 
   daytime_active: >
-    {% set offset = sunset_offset_seconds | int(0) %}
+    {% set rise_offset = sunrise_offset_seconds | int(0) %}
+    {% set down_offset = sunset_offset_seconds | int(0) %}
 
     {% if is_state(workday_sensor, 'on') %}
       {% set earliest_open = today_at(early_open_wd) %}
@@ -872,78 +897,51 @@ variables:
       {% set earliest_open = today_at(early_open_we) %}
     {% endif %}
 
-    {% if now() < earliest_open %}
+    {% set next_rising = as_datetime(state_attr('sun.sun', 'next_rising')) | as_local %}
+    {% if next_rising.date() == now().date() %}
+      {% set base_rising = next_rising %}
+    {% else %}
+      {% set base_rising = next_rising - timedelta(days=1) %}
+    {% endif %}
+    {% set offset_rising = base_rising + timedelta(seconds=rise_offset) %}
+    {% set effective_open = [earliest_open, offset_rising] | max %}
 
+    {% if now() < effective_open %}
       false
-
     {% elif is_state('sun.sun', 'above_horizon') %}
-
-      {% if offset < 0 %}
-
+      {% if down_offset < 0 %}
         {% set next_setting =
              as_datetime(state_attr('sun.sun', 'next_setting'))
              | as_local %}
-
-        {{
-          now()
-          <
-          (
-            next_setting
-            +
-            timedelta(seconds=offset)
-          )
-        }}
-
+        {{ now() < (next_setting + timedelta(seconds=down_offset)) }}
       {% else %}
-
         true
-
       {% endif %}
-
     {% else %}
-
-      {% if offset > 0 %}
-
+      {# Vor Sonnenaufgang kann ein negativer Sunrise-Offset den Tagesbetrieb
+         bereits aktivieren. Nach Sonnenuntergang gilt dagegen nur ein
+         positiver Sunset-Offset. #}
+      {% if now() < base_rising %}
+        {{ now() >= effective_open }}
+      {% elif down_offset > 0 %}
         {{
           now()
           <
           (
             states['sun.sun'].last_changed
             +
-            timedelta(seconds=offset)
+            timedelta(seconds=down_offset)
           )
         }}
-
       {% else %}
-
         false
-
       {% endif %}
-
     {% endif %}
 
 
+
   # ===========================================================================
-  # REFERENZ-ROLLO FORDERT SCHLIESSEN
-  # ===========================================================================
-
-  reference_cover_requests_close: >
-    {{
-      close_reference_cover_enabled | bool
-      and
-      close_reference_cover | length > 0
-      and
-      is_state('sun.sun', 'below_horizon')
-      and
-      (
-        expand(close_reference_cover)
-        | selectattr('state', 'eq', 'closed')
-        | list
-        | count > 0
-      )
-    }}
-
-
+  # AUSSENTEMPERATUR
   # ===========================================================================
   # AUSSENTEMPERATUR
   # ===========================================================================
@@ -1036,11 +1034,7 @@ variables:
   # ===========================================================================
 
   desired_position: >
-    {% if reference_cover_requests_close | bool %}
-
-      0
-
-    {% elif not (daytime_active | bool) %}
+    {% if not (daytime_active | bool) %}
 
       0
 
@@ -1417,7 +1411,7 @@ actions:
 
 
   # ===========================================================================
-  # MANUELLE ÜBERSTEUERUNG
+  # MANUELLE / EXTERNE ÜBERSTEUERUNG
   #
   # Sicherheitsrelevante neue Fensterereignisse wurden bereits behandelt.
   # ===========================================================================
@@ -1431,8 +1425,9 @@ actions:
     then:
 
       - stop: >
-          Manuelle Bedienung innerhalb der letzten 15 Minuten erkannt.
-          Automatische Positionsänderung unterdrückt.
+          Manuelle oder externe Übersteuerung aktiv.
+          Automatische Positionsänderung wird für die konfigurierte Dauer
+          unterdrückt.
 
 
 
