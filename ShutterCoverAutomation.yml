@@ -25,7 +25,7 @@
 # =============================================================================
 
 blueprint:
-  name: Shutter Cover Automation Enterprise
+  name: Shutter Cover Automation
 
   description: >
     Automatische Rollladensteuerung mit Sonnenaufgang/Sonnenuntergang,
