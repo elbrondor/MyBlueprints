@@ -1,7 +1,7 @@
 # =============================================================================
 # ShutterCoverAutomation.yml
 #
-# VERSION: 0.3.6
+# VERSION: 0.3.7
 #
 # Home Assistant Blueprint zur automatischen Steuerung von Rollläden.
 #
@@ -12,10 +12,11 @@
 # PRIORITÄTEN
 #
 # 1. Aktiver Fenster-/Aussperrschutz
-# 2. Sonderfall Sonnenaufgang vor frühester Öffnungszeit
-# 3. Manuelle/externe Übersteuerung
-# 4. Globalbeschattung
-# 5. Normaler Tages-/Nachtbetrieb
+# 2. Regenschutz bei geöffnetem/gekipptem Fenster
+# 3. Sonderfall Sonnenaufgang vor frühester Öffnungszeit
+# 4. Manuelle/externe Übersteuerung
+# 5. Globalbeschattung
+# 6. Normaler Tages-/Nachtbetrieb
 #
 # Fahrbefehle:
 # - maximal 10 Versuche
@@ -30,9 +31,9 @@ blueprint:
   description: >
     Automatische Rollladensteuerung mit Sonnenaufgang/Sonnenuntergang,
     Workday-Unterstützung, Aussperr-/Lüftungsschutz, manueller
-    Übersteuerung, Globalbeschattung, Sunrise-Offset, Schlafzimmer-
-    Sonderfunktion und automatischer Wiederholung fehlgeschlagener
-    Fahrbefehle.
+    Übersteuerung, Regenschutz, Globalbeschattung, Sunrise-Offset,
+    Schlafzimmer-Sonderfunktion und automatischer Wiederholung
+    fehlgeschlagener Fahrbefehle.
 
   domain: automation
 
@@ -174,6 +175,84 @@ blueprint:
               mode: slider
 
 
+
+
+
+    # =========================================================================
+    # REGENSCHUTZ
+    # =========================================================================
+
+    rain_protection_section:
+
+      name: Regenschutz
+
+      description: >
+        Schützt geöffnete oder gekippte Fenster bei Regen durch Absenken
+        des Rollladens auf eine konfigurierbare Position.
+
+        Der Aussperrschutz bei einem vollständig geöffneten Drei-Zustands-
+        Fenstergriff besitzt immer höhere Priorität.
+
+      icon: mdi:weather-pouring
+
+      collapsed: true
+
+      input:
+
+        my_rain_protection_enabled:
+
+          name: Regenschutz aktivieren
+
+          description: >
+            Aktiviert den automatischen Regenschutz. Bei deaktivierter
+            Option werden die Regensensoren ignoriert.
+
+          default: false
+
+          selector:
+            boolean:
+
+
+        my_rain_sensors:
+
+          name: Regensensoren
+
+          description: >
+            Ein oder mehrere Regensensoren.
+
+            on  = Regen
+            off = trocken
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - binary_sensor
+              multiple: true
+
+
+        my_rain_position:
+
+          name: Rollladenposition bei Regen
+
+          description: >
+            Position, die bei aktivem Regenschutz und geöffnetem bzw.
+            gekipptem Fenster angefahren wird.
+
+            0 %   = vollständig geschlossen
+            100 % = vollständig geöffnet
+
+          default: 0
+
+          selector:
+            number:
+              min: 0
+              max: 100
+              step: 5
+              unit_of_measurement: "%"
+              mode: slider
 
 
     # =========================================================================
@@ -675,6 +754,20 @@ triggers:
     id: window_closed
 
 
+
+  # ---------------------------------------------------------------------------
+  # REGENSCHUTZ
+  #
+  # Jede Zustandsänderung führt zu einer Neubewertung. Dadurch wird sowohl
+  # bei Regenbeginn geschützt als auch bei Regenende der normale Sollzustand
+  # wiederhergestellt.
+  # ---------------------------------------------------------------------------
+
+  - trigger: state
+    entity_id: !input my_rain_sensors
+    id: rain_change
+
+
   # ---------------------------------------------------------------------------
   # GLOBALBESCHATTUNG
   # ---------------------------------------------------------------------------
@@ -715,6 +808,8 @@ variables:
   override_entities: !input my_override_entities
   override_automations: !input my_override_automations
 
+  rain_sensors: !input my_rain_sensors
+
   workday_sensor: !input my_is_workday
 
 
@@ -735,6 +830,9 @@ variables:
   sunset_offset: !input my_down_offset
 
   override_duration: !input my_override_duration
+
+  rain_protection_enabled: !input my_rain_protection_enabled
+  rain_position: !input my_rain_position
 
   protection_close_percentage: !input my_protection_close_percentage
 
@@ -1087,6 +1185,25 @@ variables:
 
 
 
+  # ===========================================================================
+  # REGENSCHUTZ AKTIV?
+  # ===========================================================================
+
+  rain_active: >
+    {{
+      rain_protection_enabled | bool
+      and
+      rain_sensors | length > 0
+      and
+      (
+        expand(rain_sensors)
+        | selectattr('state', 'eq', 'on')
+        | list
+        | count > 0
+      )
+    }}
+
+
 # =============================================================================
 # CONDITIONS
 # =============================================================================
@@ -1100,6 +1217,196 @@ conditions: []
 # =============================================================================
 
 actions:
+
+
+  # ===========================================================================
+  # PRIORITÄT 1:
+  # AUSSperrSCHUTZ BEI OPEN
+  #
+  # Ein NEUES Open-Ereignis besitzt höchste Priorität.
+  #
+  # Dadurch gilt auch:
+  #
+  # 06:15 Sunrise -> Rollo geschlossen
+  # 06:45 Fenster wird OPEN
+  # -> Rollo fährt auf 100 %
+  # ===========================================================================
+
+  - choose:
+
+      - conditions:
+
+          - condition: trigger
+            id: handle_open
+
+        sequence:
+
+          - repeat:
+
+              sequence:
+
+                - action: cover.set_cover_position
+                  continue_on_error: true
+
+                  target:
+                    entity_id: !input my_cover
+
+                  data:
+                    position: 100
+
+
+                - delay:
+                    seconds: 3
+
+
+              until:
+
+                - condition: template
+                  value_template: >
+                    {{
+                      (
+                        state_attr(cover_entity, 'current_position')
+                        | int(-1)
+                      )
+                      >= 98
+                      or
+                      repeat.index >= 10
+                    }}
+
+
+          - stop: >
+              Aussperrschutz ausgeführt.
+              Rollladen vollständig geöffnet.
+
+
+
+
+
+  # ===========================================================================
+  # AUSSperrSCHUTZ BEI REGEN-NEUBEWERTUNG
+  #
+  # Meldet ein Drei-Zustands-Fenstergriff aktuell OPEN, darf auch ein
+  # Regen-Trigger niemals schließen.
+  # ===========================================================================
+
+  - choose:
+
+      - conditions:
+
+          - condition: trigger
+            id: rain_change
+
+          - condition: template
+            value_template: >
+              {{ handle_is_open | bool }}
+
+        sequence:
+
+          - repeat:
+
+              sequence:
+
+                - action: cover.set_cover_position
+                  continue_on_error: true
+
+                  target:
+                    entity_id: !input my_cover
+
+                  data:
+                    position: 100
+
+                - delay:
+                    seconds: 3
+
+              until:
+
+                - condition: template
+                  value_template: >
+                    {{
+                      (state_attr(cover_entity, 'current_position') | int(-1)) >= 98
+                      or
+                      repeat.index >= 10
+                    }}
+
+          - stop: >
+              Aussperrschutz hat Vorrang vor Regenschutz.
+              Rollladen vollständig geöffnet.
+
+
+  # ===========================================================================
+  # PRIORITÄT 2:
+  # REGENSCHUTZ
+  #
+  # Ein vollständig OPEN gemeldeter Drei-Zustands-Fenstergriff wurde bereits
+  # durch den Aussperrschutz oben behandelt und bleibt auf 100 %.
+  #
+  # Bei TILTED oder einem offenen Zwei-Zustands-Fenstersensor wird bei Regen
+  # die konfigurierte Regenposition angefahren. Der Regenschutz überstimmt
+  # dabei die manuelle/externe Übersteuerung.
+  # ===========================================================================
+
+  - choose:
+
+      - conditions:
+
+          - condition: template
+            value_template: >
+              {{
+                rain_active | bool
+                and
+                not (handle_is_open | bool)
+                and
+                (
+                  handle_is_tilted | bool
+                  or
+                  window_is_open | bool
+                )
+              }}
+
+        sequence:
+
+          - repeat:
+
+              sequence:
+
+                - action: cover.set_cover_position
+                  continue_on_error: true
+
+                  target:
+                    entity_id: !input my_cover
+
+                  data:
+                    position: "{{ rain_position | int }}"
+
+
+                - delay:
+                    seconds: 3
+
+
+              until:
+
+                - condition: template
+                  value_template: >
+                    {{
+                      (
+                        (
+                          state_attr(cover_entity, 'current_position')
+                          | int(-999)
+                        )
+                        -
+                        (rain_position | int)
+                      )
+                      | abs
+                      <= 2
+                      or
+                      repeat.index >= 10
+                    }}
+
+
+          - stop: >
+              Regenschutz aktiv.
+              Konfigurierte Regenposition wurde angefahren.
+
 
 
   # ===========================================================================
@@ -1174,67 +1481,6 @@ actions:
           - stop: >
               Sonnenaufgang vor frühester Öffnungszeit.
               Rollladen wurde vollständig geschlossen.
-
-
-
-  # ===========================================================================
-  # PRIORITÄT 1:
-  # AUSSperrSCHUTZ BEI OPEN
-  #
-  # Ein NEUES Open-Ereignis besitzt höchste Priorität.
-  #
-  # Dadurch gilt auch:
-  #
-  # 06:15 Sunrise -> Rollo geschlossen
-  # 06:45 Fenster wird OPEN
-  # -> Rollo fährt auf 100 %
-  # ===========================================================================
-
-  - choose:
-
-      - conditions:
-
-          - condition: trigger
-            id: handle_open
-
-        sequence:
-
-          - repeat:
-
-              sequence:
-
-                - action: cover.set_cover_position
-                  continue_on_error: true
-
-                  target:
-                    entity_id: !input my_cover
-
-                  data:
-                    position: 100
-
-
-                - delay:
-                    seconds: 3
-
-
-              until:
-
-                - condition: template
-                  value_template: >
-                    {{
-                      (
-                        state_attr(cover_entity, 'current_position')
-                        | int(-1)
-                      )
-                      >= 98
-                      or
-                      repeat.index >= 10
-                    }}
-
-
-          - stop: >
-              Aussperrschutz ausgeführt.
-              Rollladen vollständig geöffnet.
 
 
 
@@ -1413,7 +1659,7 @@ actions:
   # ===========================================================================
   # MANUELLE / EXTERNE ÜBERSTEUERUNG
   #
-  # Sicherheitsrelevante neue Fensterereignisse wurden bereits behandelt.
+  # Aussperr- und Regenschutz wurden bereits mit höherer Priorität behandelt.
   # ===========================================================================
 
   - if:
