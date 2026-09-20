@@ -1,7 +1,7 @@
 # =============================================================================
 # ShutterCoverAutomation.yml
 #
-# VERSION: 0.3.4
+# VERSION: 0.3.5
 #
 # Home Assistant Blueprint zur automatischen Steuerung von Rollläden.
 #
@@ -11,11 +11,12 @@
 #
 # PRIORITÄTEN
 #
-# 1. Aussperr-/Fensterschutz
-# 2. Manuelle Übersteuerung
-# 3. Referenz-Rollo / zusätzlicher Schließwunsch
-# 4. Globalbeschattung
-# 5. Normaler Tages-/Nachtbetrieb
+# 1. Aktiver Fenster-/Aussperrschutz
+# 2. Sonderfall Sonnenaufgang vor frühester Öffnungszeit
+# 3. Manuelle Übersteuerung
+# 4. Referenz-Rollo / zusätzlicher Schließwunsch
+# 5. Globalbeschattung
+# 6. Normaler Tages-/Nachtbetrieb
 #
 # Fahrbefehle:
 # - maximal 10 Versuche
@@ -24,16 +25,15 @@
 #
 # =============================================================================
 
-
 blueprint:
-
   name: Shutter Cover Automation Enterprise
 
   description: >
     Automatische Rollladensteuerung mit Sonnenaufgang/Sonnenuntergang,
     Workday-Unterstützung, Aussperr-/Lüftungsschutz, manueller
-    Übersteuerung, Globalbeschattung, Referenz-Rollo und automatischer
-    Wiederholung fehlgeschlagener Fahrbefehle.
+    Übersteuerung, Globalbeschattung, Referenz-Rollo, Schlafzimmer-
+    Sonderfunktion und automatischer Wiederholung fehlgeschlagener
+    Fahrbefehle.
 
   domain: automation
 
@@ -218,14 +218,27 @@ blueprint:
 
 
     # =========================================================================
-    # WOCHENTAGE / WOCHENENDE / FEIERTAGE
+    # SONNENAUFGANG / ÖFFNEN
     # =========================================================================
 
-    week_modifier_section:
+    sunrise_section:
 
-      name: Wochenende und Feiertage
+      name: Sonnenaufgang / Öffnen
 
-      icon: mdi:calendar-week
+      description: >
+        Einstellungen für das automatische Öffnen der Rollläden
+        am Morgen.
+
+        Hier kann festgelegt werden, wann die Rollläden an Arbeitstagen
+        sowie an Wochenenden und Feiertagen frühestens geöffnet werden.
+
+        Zusätzlich kann verhindert werden, dass ein bereits geöffnetes
+        oder gekipptes Fenster beim Sonnenaufgang zu einem vorzeitigen
+        Öffnen des Rollladens führt.
+
+      icon: mdi:weather-sunset-up
+
+      collapsed: true
 
       input:
 
@@ -235,6 +248,9 @@ blueprint:
           name: Workday Sensor
 
           description: >
+            Sensor zur Unterscheidung zwischen Arbeitstagen und
+            Wochenenden bzw. Feiertagen.
+
             on  = Arbeitstag
             off = Wochenende oder Feiertag
 
@@ -252,6 +268,10 @@ blueprint:
 
           name: Frühestes Öffnen an Arbeitstagen
 
+          description: >
+            Vor dieser Uhrzeit wird der Rollladen an Arbeitstagen
+            nicht aufgrund des Sonnenaufgangs geöffnet.
+
           default: "07:00:00"
 
           selector:
@@ -262,10 +282,43 @@ blueprint:
 
           name: Frühestes Öffnen am Wochenende / Feiertag
 
+          description: >
+            Vor dieser Uhrzeit wird der Rollladen an Wochenenden
+            und Feiertagen nicht aufgrund des Sonnenaufgangs geöffnet.
+
           default: "08:00:00"
 
           selector:
             time:
+
+
+        my_keep_closed_between_sunrise_and_earliest_open:
+
+          name: Bei frühem Sonnenaufgang geschlossen halten
+
+          description: >
+            Ist diese Option aktiviert und der Sonnenaufgang liegt vor
+            der konfigurierten frühesten Öffnungszeit, wird der Rollladen
+            beim Sonnenaufgang vollständig geschlossen.
+
+            Dies gilt auch dann, wenn das Fenster bereits vor dem
+            Sonnenaufgang geöffnet oder gekippt war und der Rollladen
+            deshalb durch den Aussperr- oder Lüftungsschutz geöffnet ist.
+
+            Wird das Fenster NACH dem Sonnenaufgang erneut geöffnet oder
+            gekippt, greift der Aussperr-/Lüftungsschutz wieder normal.
+
+            Bei Erreichen der frühesten Öffnungszeit wird ebenfalls der
+            aktuelle Fensterzustand wieder berücksichtigt.
+
+            Diese Funktion ist insbesondere für Schlafzimmer gedacht,
+            damit es zwischen einem frühen Sonnenaufgang und der
+            gewünschten Aufstehzeit dunkel bleibt.
+
+          default: false
+
+          selector:
+            boolean:
 
 
 
@@ -526,10 +579,18 @@ blueprint:
 triggers:
 
 
+  # ---------------------------------------------------------------------------
+  # SONNENAUFGANG
+  # ---------------------------------------------------------------------------
+
   - trigger: sun
     event: sunrise
     id: sunrise
 
+
+  # ---------------------------------------------------------------------------
+  # FRÜHESTE ÖFFNUNGSZEIT
+  # ---------------------------------------------------------------------------
 
   - trigger: time
     at: !input my_early_open_wd
@@ -540,6 +601,10 @@ triggers:
     at: !input my_early_open_we
     id: early_open_we
 
+
+  # ---------------------------------------------------------------------------
+  # SONNENUNTERGANG
+  # ---------------------------------------------------------------------------
 
   - trigger: sun
     event: sunset
@@ -558,16 +623,7 @@ triggers:
 
 
   # ---------------------------------------------------------------------------
-  # DREI-ZUSTANDS-SENSOR
-  #
-  # from wird absichtlich NICHT eingeschränkt.
-  #
-  # Dadurch können wir in den Actions über trigger.from_state erkennen,
-  # ob beispielsweise der Übergang
-  #
-  #     open -> tilted
-  #
-  # stattgefunden hat.
+  # DREI-ZUSTANDS-FENSTERSENSOR
   # ---------------------------------------------------------------------------
 
   - trigger: state
@@ -595,7 +651,7 @@ triggers:
 
 
   # ---------------------------------------------------------------------------
-  # ZWEI-ZUSTANDS-SENSOR
+  # ZWEI-ZUSTANDS-FENSTERSENSOR
   # ---------------------------------------------------------------------------
 
   - trigger: state
@@ -675,6 +731,9 @@ variables:
 
   protection_close_percentage: !input my_protection_close_percentage
 
+  keep_closed_between_sunrise_and_earliest_open:
+    !input my_keep_closed_between_sunrise_and_earliest_open
+
   close_reference_cover_enabled: !input my_close_reference_cover_enabled
 
   global_shading_enabled: !input my_global_shading_enabled
@@ -685,16 +744,46 @@ variables:
 
 
   # ===========================================================================
-  # SCHUTZPOSITION / LÜFTUNGSPOSITION
-  #
-  # Beispiel:
-  #
-  # 60 % geschlossen
-  # -> Cover-Position 40
+  # SCHUTZ-/LÜFTUNGSPOSITION
   # ===========================================================================
 
   protection_position: >
     {{ 100 - (protection_close_percentage | int(60)) }}
+
+
+  # ===========================================================================
+  # FRÜHESTE ÖFFNUNGSZEIT HEUTE
+  # ===========================================================================
+
+  earliest_open_today: >
+    {% if is_state(workday_sensor, 'on') %}
+      {{ today_at(early_open_wd) }}
+    {% else %}
+      {{ today_at(early_open_we) }}
+    {% endif %}
+
+
+  # ===========================================================================
+  # SONNENAUFGANG-SONDERFALL
+  #
+  # Nur TRUE, wenn:
+  #
+  # - Funktion aktiviert
+  # - aktueller Trigger = Sonnenaufgang
+  # - früheste Öffnungszeit noch nicht erreicht
+  #
+  # Ein späteres Öffnen/Kippen erzeugt einen neuen Trigger und aktiviert
+  # damit wieder den normalen Fenster-/Aussperrschutz.
+  # ===========================================================================
+
+  sunrise_keep_closed: >
+    {{
+      keep_closed_between_sunrise_and_earliest_open | bool
+      and
+      trigger.id == 'sunrise'
+      and
+      now() < (earliest_open_today | as_datetime)
+    }}
 
 
   # ===========================================================================
@@ -720,7 +809,6 @@ variables:
 
     {% endfor %}
 
-
     {% for entity in local_input_2 %}
 
       {% if states[entity] is defined %}
@@ -736,7 +824,6 @@ variables:
       {% endif %}
 
     {% endfor %}
-
 
     {{ ns.active }}
 
@@ -784,7 +871,6 @@ variables:
     {% else %}
       {% set earliest_open = today_at(early_open_we) %}
     {% endif %}
-
 
     {% if now() < earliest_open %}
 
@@ -1023,16 +1109,91 @@ actions:
 
 
   # ===========================================================================
-  # PRIORITÄT 1
+  # SONDERFALL:
   #
-  # AUSSperrSCHUTZ: OPEN
+  # SONNENAUFGANG VOR FRÜHESTER ÖFFNUNGSZEIT
   #
-  # Das Rollo muss auf 100 fahren.
+  # Beispiel:
   #
-  # Auch dieser Fahrbefehl besitzt Retry:
+  # Sonnenaufgang:       06:15
+  # früheste Öffnung:    07:30
   #
+  # War das Fenster bereits nachts OPEN oder TILTED und stand der
+  # Rollladen deshalb auf 100 bzw. auf der Lüftungsposition, wird er
+  # beim Sonnenaufgang vollständig geschlossen.
+  #
+  # WICHTIG:
+  #
+  # Dies geschieht ausschließlich beim SUNRISE-Trigger.
+  #
+  # Wird das Fenster anschließend neu geöffnet/gekippt, greifen die
+  # normalen Schutz-Trigger wieder.
+  #
+  # Retry:
   #   maximal 10 Versuche
-  #   jeweils 3 Sekunden Abstand
+  #   3 Sekunden Abstand
+  # ===========================================================================
+
+  - choose:
+
+      - conditions:
+
+          - condition: template
+            value_template: >
+              {{ sunrise_keep_closed | bool }}
+
+        sequence:
+
+          - repeat:
+
+              sequence:
+
+                - action: cover.set_cover_position
+                  continue_on_error: true
+
+                  target:
+                    entity_id: !input my_cover
+
+                  data:
+                    position: 0
+
+
+                - delay:
+                    seconds: 3
+
+
+              until:
+
+                - condition: template
+                  value_template: >
+                    {{
+                      (
+                        state_attr(cover_entity, 'current_position')
+                        | int(-999)
+                      )
+                      <= 2
+                      or
+                      repeat.index >= 10
+                    }}
+
+
+          - stop: >
+              Sonnenaufgang vor frühester Öffnungszeit.
+              Rollladen wurde vollständig geschlossen.
+
+
+
+  # ===========================================================================
+  # PRIORITÄT 1:
+  # AUSSperrSCHUTZ BEI OPEN
+  #
+  # Ein NEUES Open-Ereignis besitzt höchste Priorität.
+  #
+  # Dadurch gilt auch:
+  #
+  # 06:15 Sunrise -> Rollo geschlossen
+  # 06:45 Fenster wird OPEN
+  # -> Rollo fährt auf 100 %
   # ===========================================================================
 
   - choose:
@@ -1058,26 +1219,20 @@ actions:
                     position: 100
 
 
-                # -------------------------------------------------------------
-                # Aktor bekommt Zeit, den Befehl zu verarbeiten und seine
-                # Position an Home Assistant zurückzumelden.
-                # -------------------------------------------------------------
-
                 - delay:
                     seconds: 3
 
 
               until:
 
-                # Ziel erreicht
-                # ODER
-                # maximal 10 Versuche durchgeführt
-
                 - condition: template
                   value_template: >
                     {{
-                      (state_attr(cover_entity, 'current_position') | int(-1))
-                      >= 99
+                      (
+                        state_attr(cover_entity, 'current_position')
+                        | int(-1)
+                      )
+                      >= 98
                       or
                       repeat.index >= 10
                     }}
@@ -1085,27 +1240,17 @@ actions:
 
           - stop: >
               Aussperrschutz ausgeführt.
-              Rollladen sollte vollständig geöffnet sein.
+              Rollladen vollständig geöffnet.
 
 
 
   # ===========================================================================
   # OPEN -> TILTED
   #
-  # BESONDERER FALL:
+  # War das Fenster vollständig OPEN, stand der Rollladen aufgrund
+  # des Aussperrschutzes auf 100 %.
   #
-  # Das Fenster war vollständig OPEN.
-  #
-  # Dadurch wurde der Aussperrschutz aktiviert und das Rollo auf
-  # Position 100 gefahren.
-  #
-  # Wird das Fenster anschließend auf TILTED gestellt, soll das Rollo
-  # NICHT auf 100 bleiben.
-  #
-  # Es darf jetzt auf die konfigurierte Lüftungs-/Schutzposition fahren.
-  #
-  # Dieser Übergang darf also AUSNAHMSWEISE auch eine Schließbewegung
-  # auslösen.
+  # Beim Wechsel auf TILTED darf er auf die Lüftungsposition fahren.
   # ===========================================================================
 
   - choose:
@@ -1151,7 +1296,7 @@ actions:
                       (
                         (
                           state_attr(cover_entity, 'current_position')
-                          | int(-1)
+                          | int(-999)
                         )
                         -
                         (protection_position | int)
@@ -1165,25 +1310,17 @@ actions:
 
           - stop: >
               Fenster wechselte von OPEN auf TILTED.
-              Aussperrschutz aufgehoben und Lüftungsposition angefahren.
+              Lüftungsposition angefahren.
 
 
 
   # ===========================================================================
   # NORMALER TILTED / WINDOW OPEN SCHUTZ
   #
-  # Bei:
+  # Ist das Rollo weiter geschlossen als die Schutzposition,
+  # wird es bis zur Schutzposition geöffnet.
   #
-  #   CLOSED -> TILTED
-  #
-  # oder:
-  #
-  #   Zwei-Zustands-Sensor -> OPEN
-  #
-  # wird nur dann gefahren, wenn das Rollo aktuell WEITER GESCHLOSSEN
-  # als die Schutzposition ist.
-  #
-  # Ein bereits weiter geöffnetes Rollo bleibt unverändert.
+  # Ein bereits weiter geöffnetes Rollo wird NICHT geschlossen.
   # ===========================================================================
 
   - choose:
@@ -1198,7 +1335,10 @@ actions:
           - condition: template
             value_template: >
               {{
-                (state_attr(cover_entity, 'current_position') | int(0))
+                (
+                  state_attr(cover_entity, 'current_position')
+                  | int(0)
+                )
                 <
                 (protection_position | int)
               }}
@@ -1228,9 +1368,12 @@ actions:
                 - condition: template
                   value_template: >
                     {{
-                      (state_attr(cover_entity, 'current_position') | int(-1))
+                      (
+                        state_attr(cover_entity, 'current_position')
+                        | int(-1)
+                      )
                       >=
-                      (protection_position | int)
+                      ((protection_position | int) - 2)
                       or
                       repeat.index >= 10
                     }}
@@ -1238,19 +1381,22 @@ actions:
 
           - stop: >
               Fenster-/Lüftungsschutz ausgeführt.
-              Rollladen bis zur Schutzposition geöffnet.
+              Schutzposition angefahren.
 
 
 
   # ===========================================================================
-  # TILTED / WINDOW OPEN ABER SCHUTZ BEREITS ERFÜLLT
+  # TILTED / WINDOW OPEN, SCHUTZ BEREITS ERFÜLLT
   #
-  # WICHTIG:
+  # Beispiel:
   #
-  # OPEN -> TILTED wurde bereits weiter oben separat behandelt.
+  # Rollo aktuell:       80 %
+  # Schutzposition:      40 %
+  # Fenster wird tilted
   #
-  # In allen anderen Fällen soll ein weiter geöffnetes Rollo durch
-  # das Öffnen/Kippen des Fensters NICHT geschlossen werden.
+  # -> Rollo bleibt bei 80 %
+  #
+  # Die Ausnahme OPEN -> TILTED wurde bereits oben behandelt.
   # ===========================================================================
 
   - choose:
@@ -1271,9 +1417,9 @@ actions:
 
 
   # ===========================================================================
-  # PRIORITÄT 2
+  # MANUELLE ÜBERSTEUERUNG
   #
-  # MANUAL OVERRIDE
+  # Sicherheitsrelevante neue Fensterereignisse wurden bereits behandelt.
   # ===========================================================================
 
   - if:
@@ -1293,24 +1439,21 @@ actions:
   # ===========================================================================
   # ZIELPOSITION
   #
-  # Hier wird der normale Sollzustand mit dem AKTUELLEN Fensterzustand
-  # kombiniert.
+  # Der normale Sollzustand wird mit dem AKTUELLEN Fensterzustand kombiniert.
   #
-  # OPEN:
-  #
-  #     100
-  #
-  # TILTED:
-  #
-  #     mindestens protection_position
-  #
-  # Zwei-Zustands-Sensor OPEN:
-  #
-  #     mindestens protection_position
+  # Besonders wichtig beim Erreichen der frühesten Öffnungszeit:
   #
   # CLOSED:
+  #     normaler Tages-Sollwert
   #
-  #     normaler Sollzustand
+  # TILTED:
+  #     mindestens protection_position
+  #
+  # OPEN:
+  #     100 %
+  #
+  # Der Sunrise-Sonderfall wurde zu diesem Zeitpunkt bereits oben behandelt
+  # und mit STOP beendet.
   # ===========================================================================
 
   - variables:
@@ -1340,7 +1483,7 @@ actions:
 
 
   # ===========================================================================
-  # NUR FAHREN, WENN IST != SOLL
+  # NUR FAHREN, WENN IST UND SOLL MEHR ALS 2 % ABWEICHEN
   # ===========================================================================
 
   - condition: template
@@ -1350,7 +1493,7 @@ actions:
         (
           (
             state_attr(cover_entity, 'current_position')
-            | int(-1)
+            | int(-999)
           )
           -
           (target_position | int)
@@ -1364,24 +1507,9 @@ actions:
   # ===========================================================================
   # NORMALER FAHRBEFEHL MIT RETRY
   #
-  # Es werden maximal 10 Versuche durchgeführt.
-  #
-  # Nach jedem Fahrbefehl:
-  #
-  #   3 Sekunden warten
-  #
-  # Danach wird current_position geprüft.
-  #
-  # Toleranz:
-  #
-  #   +/- 2 %
-  #
-  # Die Toleranz verhindert unnötige Wiederholungen bei Aktoren,
-  # die beispielsweise statt 40 % einen Wert von 39 % oder 41 %
-  # zurückmelden.
-  #
-  # continue_on_error verhindert, dass ein Kommunikationsfehler beim
-  # Service-Aufruf die komplette Automation sofort beendet.
+  # maximal 10 Versuche
+  # 3 Sekunden zwischen den Versuchen
+  # +/- 2 % Toleranz
   # ===========================================================================
 
   - repeat:
