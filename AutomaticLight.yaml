@@ -1,8 +1,8 @@
 blueprint:
   name: Automatisches Licht mit Sperrzeiten
   description: >
-    Schaltet Licht- und/oder Schalter-Entitaeten bei Bewegung ein und nach
-    ausbleibender Bewegung wieder aus. Ein optionaler Zeitplan und ein
+    Schaltet ausgewaehlte Licht- und Schalter-Entitaeten bei Bewegung ein und
+    nach ausbleibender Bewegung wieder aus. Ein optionaler Zeitplan und ein
     optionaler IsDark-Sensor sowie eine Sperr-Entitaet sperren nur das
     automatische Einschalten.
     Das Ausschalten bleibt jederzeit aktiv. Eine Pruefung alle fuenf Minuten
@@ -22,21 +22,14 @@ blueprint:
           description: Alle Bewegungsmelder dieses Bereichs werden beruecksichtigt.
           selector:
             area: {}
-        light_entities:
-          name: Licht-Entitaeten
-          description: Optional. Mindestens hier oder bei Schalter-Entitaeten ein Ziel auswaehlen.
-          default: []
+        controlled_entities:
+          name: Zu schaltende Entitaeten
+          description: Licht- und Schalter-Entitaeten, die gemeinsam geschaltet werden.
           selector:
             entity:
-              domain: light
-              multiple: true
-        switch_entities:
-          name: Schalter-Entitaeten
-          description: Optional, zum Beispiel ein Relais fuer das Deckenlicht.
-          default: []
-          selector:
-            entity:
-              domain: switch
+              filter:
+                - domain: light
+                - domain: switch
               multiple: true
     restrictions:
       name: Einschaltbedingungen
@@ -89,12 +82,10 @@ mode: restart
 max_exceeded: silent
 
 variables:
-  light_entities: !input light_entities
-  switch_entities: !input switch_entities
+  controlled_entities: !input controlled_entities
   blocking_entity: !input blocking_entity
   blocking_schedule: !input blocking_schedule
   darkness_entity: !input darkness_entity
-  controlled_entities: "{{ light_entities + switch_entities }}"
 
 triggers:
   - id: motion_detected
