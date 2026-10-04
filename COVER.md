@@ -1,6 +1,6 @@
 # Shutter Cover Automation
 
-`ShutterCoverAutomation.yml` ist ein Home-Assistant-Blueprint zur automatischen Steuerung von Rollläden.
+`ShutterCoverAutomation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Steuerung von Rollläden.
 
 **Aktuelle Blueprint-Version: 0.3.7**
 
@@ -97,7 +97,7 @@ Fahrbefehle werden anhand der tatsächlichen `current_position` geprüft. Bei fe
 Datei in das Blueprint-Verzeichnis kopieren, zum Beispiel:
 
 ```text
-config/blueprints/automation/elbrondor/ShutterCoverAutomation.yml
+config/blueprints/automation/elbrondor/ShutterCoverAutomation.yaml
 ```
 
 Danach in Home Assistant die Automationen/Blueprints neu laden oder Home Assistant neu starten. Anschließend unter **Einstellungen → Automationen & Szenen → Blueprints** aus dem Blueprint eine Automation für den jeweiligen Rollladen erzeugen.

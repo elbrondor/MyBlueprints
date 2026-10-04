@@ -1,5 +1,5 @@
 # =============================================================================
-# ShutterCoverAutomation.yml
+# ShutterCoverAutomation.yaml
 #
 # VERSION: 0.3.7
 #
@@ -42,7 +42,7 @@ blueprint:
   homeassistant:
     min_version: 2026.8.0
 
-  source_url: https://raw.githubusercontent.com/elbrondor/MyBlueprints/refs/heads/master/ShutterCoverAutomation.yml
+  source_url: https://github.com/elbrondor/MyBlueprints/blob/master/ShutterCoverAutomation.yaml
 
 
   # ===========================================================================

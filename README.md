@@ -15,7 +15,7 @@ Bewegungsabhängige Lichtsteuerung mit Nachleuchtzeit, optionalen Sperrzeiten, e
 Automatische Rollladensteuerung mit Sonnenaufgang/Sonnenuntergang, Fenster- und Aussperrschutz, Regenschutz, manueller Übersteuerung und Globalbeschattung.
 
 - [Dokumentation zur Coversteuerung](COVER.md)
-- [Blueprint: ShutterCoverAutomation.yml](ShutterCoverAutomation.yml)
+- [Blueprint: ShutterCoverAutomation.yaml](ShutterCoverAutomation.yaml)
 
 ### ❄️ Climate Automation
 
