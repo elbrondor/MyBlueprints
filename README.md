@@ -6,7 +6,7 @@ Dieses Repository enthält mehrere Home-Assistant-Blueprints für die automatisc
 
 ### Automatisches Licht mit Sperrzeiten
 
-Bewegungsabhängige Lichtsteuerung mit Nachleuchtzeit, optionalen Sperrzeiten, einer Sperr-Entität für Abwesenheit und optionaler Dunkelheitsbedingung. Das automatische Ausschalten bleibt auch während einer Sperre aktiv.
+Bewegungsabhängige Lichtsteuerung mit Nachleuchtzeit, optionalen Sperrzeiten, einer Sperr-Entität für Abwesenheit, optionaler Dunkelheitsbedingung und zeitlich begrenzter manueller Übersteuerung über lokale Shelly-Eingänge.
 
 - [Blueprint: AutomaticLight.yaml](AutomaticLight.yaml)
 

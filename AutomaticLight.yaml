@@ -5,8 +5,9 @@ blueprint:
     nach ausbleibender Bewegung wieder aus. Ein optionaler Zeitplan und ein
     optionaler IsDark-Sensor sowie eine Sperr-Entitaet sperren nur das
     automatische Einschalten.
-    Das Ausschalten bleibt jederzeit aktiv. Eine Pruefung alle fuenf Minuten
-    schaltet auch manuell eingeschaltete Ziele bei ausbleibender Bewegung aus.
+    Das Ausschalten bleibt jederzeit aktiv. Eine manuelle Bedienung kann die
+    Automatik fuer eine konfigurierbare Dauer pausieren und den geschalteten
+    Lichtzustand beibehalten.
   domain: automation
   author: Jonny.S@gmx.de
   source_url: https://github.com/elbrondor/MyBlueprints/blob/master/AutomaticLight.yaml
@@ -58,6 +59,34 @@ blueprint:
           selector:
             entity:
               domain: binary_sensor
+    override:
+      name: Manuelle Uebersteuerung
+      description: >
+        Eine Zustandsaenderung an einem ausgewaehlten Shelly-Eingang pausiert
+        die Lichtautomatik. Der manuell geschaltete Lichtzustand bleibt fuer
+        die konfigurierte Dauer unveraendert.
+      icon: mdi:hand-back-right
+      collapsed: true
+      input:
+        manual_override_entities:
+          name: Lokale Lichtschalter
+          description: Shelly-Eingaenge, deren Zustandsaenderung als manuelle Bedienung gilt.
+          default: []
+          selector:
+            entity:
+              domain: binary_sensor
+              multiple: true
+        manual_override_duration:
+          name: Dauer der Uebersteuerung
+          description: Jede erneute manuelle Bedienung startet diese Zeit neu.
+          default: 15
+          selector:
+            number:
+              min: 1
+              max: 180
+              step: 1
+              unit_of_measurement: min
+              mode: box
     timing:
       name: Ausschaltverhalten
       icon: mdi:timer-outline
@@ -86,6 +115,19 @@ variables:
   blocking_entity: !input blocking_entity
   blocking_schedule: !input blocking_schedule
   darkness_entity: !input darkness_entity
+  manual_override_entities: !input manual_override_entities
+  manual_override_duration: !input manual_override_duration
+  manual_override: >
+    {% set ns = namespace(active=false) %}
+    {% set duration = (manual_override_duration | int(15)) * 60 %}
+    {% for entity in manual_override_entities %}
+      {% if states[entity] is defined %}
+        {% if (now() - states[entity].last_changed).total_seconds() < duration %}
+          {% set ns.active = true %}
+        {% endif %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.active }}
 
 triggers:
   - id: motion_detected
@@ -104,8 +146,18 @@ triggers:
   - id: safety_check
     trigger: time_pattern
     minutes: "/5"
+  - id: manual_override
+    trigger: state
+    entity_id: !input manual_override_entities
 
 actions:
+  - if:
+      - condition: template
+        value_template: "{{ manual_override | bool }}"
+    then:
+      - stop: >
+          Manuelle Uebersteuerung aktiv. Der aktuelle Lichtzustand bleibt
+          fuer die konfigurierte Dauer unveraendert.
   - choose:
       - alias: Bei Bewegung einschalten
         conditions:
