@@ -1,8 +1,14 @@
 # Home Assistant Blueprints
 
-Dieses Repository enthält mehrere Home-Assistant-Blueprints für die automatische Steuerung von Rollläden und Klimaanlagen.
+Dieses Repository enthält mehrere Home-Assistant-Blueprints für die automatische Steuerung von Licht, Rollläden und Klimaanlagen.
 
 ## Blueprints
+
+### Automatisches Licht mit Sperrzeiten
+
+Bewegungsabhängige Lichtsteuerung mit Nachleuchtzeit, optionalen Sperrzeiten und optionaler Dunkelheitsbedingung. Das automatische Ausschalten bleibt auch während einer Sperrzeit aktiv.
+
+- [Blueprint: AutomaticLight.yaml](AutomaticLight.yaml)
 
 ### 🪟 Shutter Cover Automation
 

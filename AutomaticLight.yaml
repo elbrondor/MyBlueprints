@@ -1,0 +1,139 @@
+blueprint:
+  name: Automatisches Licht mit Sperrzeiten
+  description: >
+    Schaltet Licht- und/oder Schalter-Entitaeten bei Bewegung ein und nach
+    ausbleibender Bewegung wieder aus. Ein optionaler Zeitplan und ein
+    optionaler IsDark-Sensor sperren nur das automatische Einschalten.
+    Das Ausschalten bleibt jederzeit aktiv. Eine Pruefung alle fuenf Minuten
+    schaltet auch manuell eingeschaltete Ziele bei ausbleibender Bewegung aus.
+  domain: automation
+  author: Jonny.S@gmx.de
+  source_url: https://github.com/elbrondor/MyBlueprints/blob/master/AutomaticLight.yaml
+  homeassistant:
+    min_version: "2026.7.0"
+  input:
+    devices:
+      name: Bereich und Lichtaktoren
+      icon: mdi:lightbulb-auto
+      input:
+        motion_area:
+          name: Bereich fuer Bewegung
+          description: Alle Bewegungsmelder dieses Bereichs werden beruecksichtigt.
+          selector:
+            area: {}
+        light_entities:
+          name: Licht-Entitaeten
+          description: Optional. Mindestens hier oder bei Schalter-Entitaeten ein Ziel auswaehlen.
+          default: []
+          selector:
+            entity:
+              domain: light
+              multiple: true
+        switch_entities:
+          name: Schalter-Entitaeten
+          description: Optional, zum Beispiel ein Relais fuer das Deckenlicht.
+          default: []
+          selector:
+            entity:
+              domain: switch
+              multiple: true
+    restrictions:
+      name: Einschaltbedingungen
+      icon: mdi:lightbulb-off-outline
+      input:
+        blocking_schedule:
+          name: Sperrzeiten
+          description: Optional. Solange der Zeitplan aktiv ist, wird nicht automatisch eingeschaltet.
+          default: ""
+          selector:
+            entity:
+              domain: schedule
+        darkness_entity:
+          name: Helligkeit aussen (IsDark)
+          description: Optional. Bei leerem Feld wird unabhaengig von der Helligkeit eingeschaltet. Der Sensor muss bei Dunkelheit "on" sein.
+          default: ""
+          selector:
+            entity:
+              domain: binary_sensor
+    timing:
+      name: Ausschaltverhalten
+      icon: mdi:timer-outline
+      collapsed: true
+      input:
+        automatic_off_delay:
+          name: Nachleuchtzeit
+          description: So lange muss im gesamten Bereich keine Bewegung erkannt worden sein, bevor ausgeschaltet wird.
+          default:
+            minutes: 5
+          selector:
+            duration: {}
+        safety_no_motion:
+          name: Mindestzeit ohne Bewegung fuer Sicherheitspruefung
+          description: Wird fuer die Pruefung eines manuell eingeschalteten Lichts verwendet.
+          default:
+            minutes: 3
+          selector:
+            duration: {}
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  light_entities: !input light_entities
+  switch_entities: !input switch_entities
+  blocking_schedule: !input blocking_schedule
+  darkness_entity: !input darkness_entity
+  controlled_entities: "{{ light_entities + switch_entities }}"
+
+triggers:
+  - id: motion_detected
+    trigger: motion.detected
+    target:
+      area_id: !input motion_area
+    options:
+      behavior: each
+  - id: motion_cleared
+    trigger: motion.cleared
+    target:
+      area_id: !input motion_area
+    options:
+      behavior: all
+      for: !input automatic_off_delay
+  - id: safety_check
+    trigger: time_pattern
+    minutes: "/5"
+
+actions:
+  - choose:
+      - alias: Bei Bewegung einschalten
+        conditions:
+          - condition: trigger
+            id: motion_detected
+          - condition: template
+            value_template: "{{ controlled_entities | length > 0 }}"
+          - condition: template
+            value_template: "{{ not blocking_schedule or not is_state(blocking_schedule, 'on') }}"
+          - condition: template
+            value_template: "{{ not darkness_entity or is_state(darkness_entity, 'on') }}"
+        sequence:
+          - action: homeassistant.turn_on
+            target:
+              entity_id: "{{ controlled_entities }}"
+      - alias: Ohne Bewegung ausschalten
+        conditions:
+          - condition: trigger
+            id:
+              - motion_cleared
+              - safety_check
+          - condition: template
+            value_template: "{{ controlled_entities | length > 0 }}"
+          - condition: motion.is_not_detected
+            target:
+              area_id: !input motion_area
+            options:
+              behavior: all
+              for: !input safety_no_motion
+        sequence:
+          - action: homeassistant.turn_off
+            target:
+              entity_id: "{{ controlled_entities }}"
