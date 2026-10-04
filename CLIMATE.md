@@ -1,6 +1,6 @@
 # Climate Automation
 
-`ClimateAutomation.yml` ist ein Home-Assistant-Blueprint zur automatischen Steuerung einer Klimaanlage pro Raum.
+`ClimateAutomation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Steuerung einer Klimaanlage pro Raum.
 
 ## Funktionen
 
@@ -100,7 +100,7 @@ Läuft die Klimaanlage bereits und bleibt die Außentemperatur ununterbrochen f�
 Datei in das Blueprint-Verzeichnis kopieren, zum Beispiel:
 
 ```text
-config/blueprints/automation/elbrondor/ClimateAutomation.yml
+config/blueprints/automation/elbrondor/ClimateAutomation.yaml
 ```
 
 Danach in Home Assistant die Automationen/Blueprints neu laden oder Home Assistant neu starten. Anschließend unter **Einstellungen → Automationen & Szenen → Blueprints** aus dem Blueprint eine Automation pro Raum erzeugen.

@@ -5,6 +5,8 @@ blueprint:
     Fenster-/Rollo-Schutz, Außentemperatur-Sperre, globaler Freigabe,
     Gäste-/Urlaubsmodus und manueller Übersteuerung.
   domain: automation
+  author: Jonny.S@gmx.de
+  source_url: https://github.com/elbrondor/MyBlueprints/blob/master/ClimateAutomation.yaml
   homeassistant:
     min_version: 2024.6.0
 
