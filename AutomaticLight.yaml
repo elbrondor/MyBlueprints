@@ -3,7 +3,8 @@ blueprint:
   description: >
     Schaltet Licht- und/oder Schalter-Entitaeten bei Bewegung ein und nach
     ausbleibender Bewegung wieder aus. Ein optionaler Zeitplan und ein
-    optionaler IsDark-Sensor sperren nur das automatische Einschalten.
+    optionaler IsDark-Sensor sowie eine Sperr-Entitaet sperren nur das
+    automatische Einschalten.
     Das Ausschalten bleibt jederzeit aktiv. Eine Pruefung alle fuenf Minuten
     schaltet auch manuell eingeschaltete Ziele bei ausbleibender Bewegung aus.
   domain: automation
@@ -41,6 +42,15 @@ blueprint:
       name: Einschaltbedingungen
       icon: mdi:lightbulb-off-outline
       input:
+        blocking_entity:
+          name: Sperr-Entitaet
+          description: Wenn diese Entitaet eingeschaltet ist, wird das Licht nicht automatisch eingeschaltet.
+          default: input_boolean.abwesend_urlaub
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+                - domain: switch
         blocking_schedule:
           name: Sperrzeiten
           description: Optional. Solange der Zeitplan aktiv ist, wird nicht automatisch eingeschaltet.
@@ -81,6 +91,7 @@ max_exceeded: silent
 variables:
   light_entities: !input light_entities
   switch_entities: !input switch_entities
+  blocking_entity: !input blocking_entity
   blocking_schedule: !input blocking_schedule
   darkness_entity: !input darkness_entity
   controlled_entities: "{{ light_entities + switch_entities }}"
@@ -111,6 +122,8 @@ actions:
             id: motion_detected
           - condition: template
             value_template: "{{ controlled_entities | length > 0 }}"
+          - condition: template
+            value_template: "{{ not blocking_entity or not is_state(blocking_entity, 'on') }}"
           - condition: template
             value_template: "{{ not blocking_schedule or not is_state(blocking_schedule, 'on') }}"
           - condition: template
