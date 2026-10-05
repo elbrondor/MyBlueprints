@@ -1,8 +1,15 @@
+# =============================================================================
+# AutomaticLight.yaml
+#
+# VERSION: 1.0.1
+# =============================================================================
+
 blueprint:
-  name: Automatisches Licht mit Sperrzeiten
+  name: AutomaticLight V1.0.1
   description: >
-    Schaltet ausgewaehlte Licht- und Schalter-Entitaeten bei Bewegung ein und
-    nach ausbleibender Bewegung wieder aus. Ein optionaler Zeitplan und ein
+    Schaltet ausgewaehlte Licht- und Schalter-Entitaeten bei Bewegung oder
+    Belegung ein und nach ausbleibender Aktivitaet wieder aus.
+    Ein optionaler Zeitplan und ein
     optionaler IsDark-Sensor sowie eine Sperr-Entitaet sperren nur das
     automatische Einschalten.
     Das Ausschalten bleibt jederzeit aktiv. Eine manuelle Bedienung kann die
@@ -23,6 +30,12 @@ blueprint:
           description: Alle Bewegungsmelder dieses Bereichs werden beruecksichtigt.
           selector:
             area: {}
+        use_occupancy:
+          name: Belegung beruecksichtigen (veraltet)
+          description: Kompatibilitaetseingang. Belegungssensoren werden immer beruecksichtigt; dieser Wert wird nicht mehr ausgewertet.
+          default: true
+          selector:
+            boolean: {}
         controlled_entities:
           name: Zu schaltende Entitaeten
           description: Licht- und Schalter-Entitaeten, die gemeinsam geschaltet werden.
@@ -94,14 +107,14 @@ blueprint:
       input:
         automatic_off_delay:
           name: Nachleuchtzeit
-          description: So lange muss im gesamten Bereich keine Bewegung erkannt worden sein, bevor ausgeschaltet wird.
+          description: So lange darf im gesamten Bereich weder Bewegung noch Belegung erkannt worden sein, bevor ausgeschaltet wird.
           default:
             minutes: 5
           selector:
             duration: {}
         safety_no_motion:
-          name: Mindestzeit ohne Bewegung fuer Sicherheitspruefung
-          description: Wird fuer die Pruefung eines manuell eingeschalteten Lichts verwendet.
+          name: Mindestzeit ohne Aktivitaet fuer Sicherheitspruefung
+          description: Mindestzeit ohne Bewegung und Belegung fuer die Pruefung eines manuell eingeschalteten Lichts.
           default:
             minutes: 3
           selector:
@@ -143,9 +156,22 @@ triggers:
     options:
       behavior: all
       for: !input automatic_off_delay
+  - id: occupancy_detected
+    trigger: occupancy.detected
+    target:
+      area_id: !input motion_area
+    options:
+      behavior: each
+  - id: occupancy_cleared
+    trigger: occupancy.cleared
+    target:
+      area_id: !input motion_area
+    options:
+      behavior: all
+      for: !input automatic_off_delay
   - id: safety_check
     trigger: time_pattern
-    minutes: "/5"
+    minutes: "/10"
   - id: manual_override
     trigger: state
     entity_id: !input manual_override_entities
@@ -159,10 +185,12 @@ actions:
           Manuelle Uebersteuerung aktiv. Der aktuelle Lichtzustand bleibt
           fuer die konfigurierte Dauer unveraendert.
   - choose:
-      - alias: Bei Bewegung einschalten
+      - alias: Bei Bewegung oder Belegung einschalten
         conditions:
           - condition: trigger
-            id: motion_detected
+            id:
+              - motion_detected
+              - occupancy_detected
           - condition: template
             value_template: "{{ controlled_entities | length > 0 }}"
           - condition: template
@@ -175,15 +203,22 @@ actions:
           - action: homeassistant.turn_on
             target:
               entity_id: "{{ controlled_entities }}"
-      - alias: Ohne Bewegung ausschalten
+      - alias: Ohne Bewegung und Belegung ausschalten
         conditions:
           - condition: trigger
             id:
               - motion_cleared
+              - occupancy_cleared
               - safety_check
           - condition: template
             value_template: "{{ controlled_entities | length > 0 }}"
           - condition: motion.is_not_detected
+            target:
+              area_id: !input motion_area
+            options:
+              behavior: all
+              for: !input safety_no_motion
+          - condition: occupancy.is_not_detected
             target:
               area_id: !input motion_area
             options:
