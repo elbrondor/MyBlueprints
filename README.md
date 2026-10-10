@@ -8,6 +8,7 @@ Dieses Repository enthält mehrere Home-Assistant-Blueprints für die automatisc
 
 Lichtsteuerung über alle Bewegungs- und Belegungssensoren eines Bereichs. Die gemeinsame Nachleuchtzeit startet erst, wenn sämtliche Aktivität beendet ist; optionale Sperrzeiten, Abwesenheit, Dunkelheitsbedingung und manuelle Übersteuerung werden unterstützt.
 
+- [Dokumentation zur Lichtsteuerung](LIGHT.md)
 - [Blueprint: AutomaticLight.yaml](AutomaticLight.yaml)
 
 ### 🪟 Shutter Cover Automation
