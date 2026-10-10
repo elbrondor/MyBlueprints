@@ -2,6 +2,8 @@
 
 `ClimateAutomation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Steuerung einer Klimaanlage pro Raum.
 
+**Aktuelle Blueprint-Version: 1.0.0**
+
 ## Funktionen
 
 - Globaler Hauptschalter mit höchster Priorität

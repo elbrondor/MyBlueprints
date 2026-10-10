@@ -1,7 +1,7 @@
 # =============================================================================
 # ShutterCoverAutomation.yaml
 #
-# VERSION: 0.3.7
+# VERSION: 1.0.0
 #
 # Home Assistant Blueprint zur automatischen Steuerung von Rollläden.
 #
@@ -26,7 +26,7 @@
 # =============================================================================
 
 blueprint:
-  name: Shutter Cover Automation
+  name: ShutterCoverAutomation V1.0.0
 
   description: >
     Automatische Rollladensteuerung mit Sonnenaufgang/Sonnenuntergang,

@@ -2,7 +2,7 @@
 
 `ShutterCoverAutomation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Steuerung von Rollläden.
 
-**Aktuelle Blueprint-Version: 0.3.7**
+**Aktuelle Blueprint-Version: 1.0.0**
 
 ## Funktionen
 
