@@ -154,6 +154,20 @@ Die installierte Automation **Echo Arbeitszimmer** verwendet unter anderem folge
 
 Die bestehende Entity-ID der umgebauten Automation bleibt `automation.echo_arbeitszimmer_scheiss_programm`; ihr sichtbarer Name lautet **Echo Arbeitszimmer**.
 
+## Beispiel Küche
+
+Die installierte Automation **Echo Küche** verwendet folgende raumspezifische Werte:
+
+| Einstellung | Wert |
+|---|---|
+| Bereich | `kuche` |
+| Echo | `media_player.echo_kuche` |
+| Ansage-Script | `script.notify_alexa_kuche` |
+| Einschaltlautstaerke | 27 % |
+| Lautstaerke-Zeitstempel | `input_datetime.echo_kueche_lautstaerke_gesetzt` |
+
+Die bestehende Entity-ID der umgebauten Automation bleibt `automation.alexa_kuche_scheiss_programm`; ihr sichtbarer Name lautet **Echo Küche**. Die bisherigen Automationen `automation.kuche_echo_on_motion` und `automation.kuche_echo_off_motion` sind deaktiviert, damit sie keine zusaetzlichen Wiedergabe- oder Stoppbefehle ausloesen.
+
 ## Installation
 
 Datei in das Blueprint-Verzeichnis kopieren, zum Beispiel:
