@@ -1,0 +1,10 @@
+.vault_password_file
+.git
+*.swp
+x.*
+y.*
+*.log
+*.tmp
+git-update.sh
+weiter.*
+cover_automation_v2.yaml
