@@ -149,7 +149,7 @@ Die installierte Automation **Echo Arbeitszimmer** verwendet unter anderem folge
 | Ansage-Script | `script.notify_alexa_arbeitszimmer` |
 | Alternativer Musikbefehl | `Spiele Musik, die mir gefällt auf Spotify, in zufälliger Reihenfolge.` |
 | Zusaetzlicher Programmname | `Heute im Stadion` |
-| Einschaltlautstaerke | 30 % |
+| Einschaltlautstaerke | 10 % |
 | Lautstaerke-Zeitstempel | `input_datetime.echo_arbeitszimmer_lautstaerke_gesetzt` |
 
 Die bestehende Entity-ID der umgebauten Automation bleibt `automation.echo_arbeitszimmer_scheiss_programm`; ihr sichtbarer Name lautet **Echo Arbeitszimmer**.
