@@ -1,6 +1,6 @@
 # Echo Automation
 
-`EchoAutomation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
+`echo_automation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
 **Aktuelle Blueprint-Version: 1.3.0**
 
@@ -187,7 +187,7 @@ Die bestehende Entity-ID der umgebauten Automation bleibt `automation.alexa_kuch
 Datei in das Blueprint-Verzeichnis kopieren, zum Beispiel:
 
 ```text
-config/blueprints/automation/elbrondor/EchoAutomation.yaml
+config/blueprints/automation/elbrondor/echo_automation.yaml
 ```
 
 Danach in Home Assistant die Automationen und Blueprints neu laden. Anschliessend unter **Einstellungen -> Automationen & Szenen -> Blueprints** aus dem Blueprint eine Automation fuer den gewuenschten Echo erzeugen.

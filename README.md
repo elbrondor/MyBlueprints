@@ -30,7 +30,7 @@ Automatische Steuerung einer Klimaanlage pro Raum mit Temperaturstufen, Fenster-
 Startet bei Aktivität einen Radiosender auf einem Amazon Echo, wechselt bei konfigurierbaren unerwünschten Programmen zu einer Alternative und stoppt die Wiedergabe nach anhaltender Inaktivität.
 
 - [Dokumentation zur Echo-Steuerung](ECHO.md)
-- [Blueprint: EchoAutomation.yaml](EchoAutomation.yaml)
+- [Blueprint: echo_automation.yaml](echo_automation.yaml)
 
 ## Installation
 
