@@ -2,7 +2,7 @@
 
 `echo_automation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
-**Aktuelle Blueprint-Version: 1.6.0**
+**Aktuelle Blueprint-Version: 1.7.0**
 
 ## Voraussetzungen
 
@@ -36,6 +36,7 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 - Einstellbare Nachlaufzeit von 1 bis 60 Minuten
 - Separate Sperr-Entitaeten fuer das automatische Ausschalten
 - Einstellbare Blindzeit von 1 bis 600 Sekunden zwischen Automationslaeufen
+- Positionspruefung bei einem vom Echo gemeldeten `playing`-Status
 
 ## Erreichbarkeitspruefung
 
@@ -47,6 +48,13 @@ Vor der Erreichbarkeitspruefung vergleicht der Blueprint den vorherigen
 Laufzeitpunkt der Automation mit der konfigurierten Blindzeit. Ist der Abstand
 kleiner, endet der neue Lauf sofort, ohne eine Aktion auszufuehren. Die
 Automation bleibt dabei nicht aktiv und wartet nicht mit einer Verzoegerung.
+
+Meldet der Echo danach den Zustand `playing`, aktualisiert der Blueprint die
+Entitaet und speichert die aktuelle Wiedergabeposition. Nach zehn Sekunden wird
+die Entitaet erneut aktualisiert. Nur wenn sich die Position geaendert hat, gilt die
+Wiedergabe als tatsaechlich laufend. Fehlt das Positionsattribut, wird der
+gemeldete `playing`-Status aus Sicherheitsgruenden beibehalten. Bei allen
+anderen Playerzustaenden findet diese zehnsekündige Pruefung nicht statt.
 
 ## Ablauf
 

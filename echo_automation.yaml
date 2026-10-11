@@ -1,11 +1,11 @@
 # =============================================================================
 # echo_automation.yaml
 #
-# VERSION: 1.6.0
+# VERSION: 1.7.0
 # =============================================================================
 
 blueprint:
-  name: EchoAutomation V1.6.0
+  name: EchoAutomation V1.7.0
   description: >
     Startet bei Bewegung oder Belegung einen Radiosender auf einem Amazon
     Echo. Bei unerwuenschtem Programm wird stattdessen ein alternativer
@@ -317,6 +317,32 @@ actions:
          (now() - this.attributes.last_triggered).total_seconds() >= (blind_time | float(60)) }}
   - condition: template
     value_template: "{{ has_value(echo_player) }}"
+  - if:
+      - condition: state
+        entity_id: !input echo_player
+        state: playing
+    then:
+      - action: homeassistant.update_entity
+        target:
+          entity_id: !input echo_player
+  - variables:
+      echo_media_position_before: "{{ state_attr(echo_player, 'media_position') }}"
+  - if:
+      - condition: state
+        entity_id: !input echo_player
+        state: playing
+    then:
+      - delay:
+          seconds: 10
+      - action: homeassistant.update_entity
+        target:
+          entity_id: !input echo_player
+  - variables:
+      echo_is_actually_playing: >
+        {% set position_after = state_attr(echo_player, 'media_position') %}
+        {{ is_state(echo_player, 'playing') and
+           (echo_media_position_before is none or position_after is none or
+            (position_after | float(0)) != (echo_media_position_before | float(0))) }}
   - choose:
       - alias: Bei Aktivitaet Wiedergabe starten
         conditions:
@@ -348,11 +374,8 @@ actions:
             options:
               behavior: any
               for: !input group_idle_duration
-          - condition: media_player.is_not_playing
-            target:
-              entity_id: !input echo_player
-            options:
-              behavior: any
+          - condition: template
+            value_template: "{{ not echo_is_actually_playing }}"
         sequence:
           - if:
               - condition: template
@@ -431,11 +454,8 @@ actions:
           - condition: state
             entity_id: !input shutoff_blocking_entities
             state: "off"
-          - condition: media_player.is_playing
-            target:
-              entity_id: !input echo_player
-            options:
-              behavior: any
+          - condition: template
+            value_template: "{{ echo_is_actually_playing }}"
           - condition: motion.is_not_detected
             target:
               area_id: !input activity_area
@@ -457,11 +477,8 @@ actions:
         conditions:
           - condition: trigger
             id: program_check
-          - condition: media_player.is_playing
-            target:
-              entity_id: !input echo_player
-            options:
-              behavior: any
+          - condition: template
+            value_template: "{{ echo_is_actually_playing }}"
           - condition: state
             entity_id: !input echo_player
             attribute: media_title
