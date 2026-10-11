@@ -1,11 +1,11 @@
 # =============================================================================
 # echo_automation.yaml
 #
-# VERSION: 1.7.0
+# VERSION: 1.8.0
 # =============================================================================
 
 blueprint:
-  name: EchoAutomation V1.7.0
+  name: EchoAutomation V1.8.0
   description: >
     Startet bei Bewegung oder Belegung einen Radiosender auf einem Amazon
     Echo. Bei unerwuenschtem Programm wird stattdessen ein alternativer
@@ -235,7 +235,7 @@ blueprint:
           selector:
             duration: {}
 
-mode: restart
+mode: single
 max_exceeded: silent
 
 variables:
