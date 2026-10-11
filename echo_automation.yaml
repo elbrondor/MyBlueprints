@@ -1,11 +1,11 @@
 # =============================================================================
 # echo_automation.yaml
 #
-# VERSION: 1.4.0
+# VERSION: 1.5.0
 # =============================================================================
 
 blueprint:
-  name: EchoAutomation V1.4.0
+  name: EchoAutomation V1.5.0
   description: >
     Startet bei Bewegung oder Belegung einen Radiosender auf einem Amazon
     Echo. Bei unerwuenschtem Programm wird stattdessen ein alternativer
@@ -189,6 +189,18 @@ blueprint:
       icon: mdi:stop-circle-outline
       collapsed: true
       input:
+        shutoff_blocking_entities:
+          name: Ausschalt-Sperr-Entitaeten
+          description: >
+            Die Wiedergabe wird nur gestoppt, wenn alle ausgewaehlten
+            Entitaeten ausgeschaltet sind.
+          default: []
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+                - domain: switch
+              multiple: true
         inactivity_trigger_duration:
           name: Nachlaufzeit
           description: Wartezeit nach dem Ende eines Aktivitaetssignals.
@@ -398,6 +410,9 @@ actions:
               entity_id: !input group_player
             options:
               behavior: any
+          - condition: state
+            entity_id: !input shutoff_blocking_entities
+            state: "off"
           - condition: media_player.is_playing
             target:
               entity_id: !input echo_player

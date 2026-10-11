@@ -2,7 +2,7 @@
 
 `echo_automation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
-**Aktuelle Blueprint-Version: 1.4.0**
+**Aktuelle Blueprint-Version: 1.5.0**
 
 ## Voraussetzungen
 
@@ -34,6 +34,7 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 - Konfigurierbarer Ausweichbefehl bei belegtem Spotify
 - Erneute Startpruefung, wenn der konfigurierte Echo wieder online kommt
 - Einstellbare Nachlaufzeit von 1 bis 60 Minuten
+- Separate Sperr-Entitaeten fuer das automatische Ausschalten
 
 ## Erreichbarkeitspruefung
 
@@ -78,6 +79,7 @@ Das Ausschalten wird nach Ende von Bewegung oder Belegung sowie alle 5 Minuten a
 
 - der Echo erreichbar ist und gerade spielt,
 - der uebergeordnete Gruppenplayer nicht spielt und
+- alle konfigurierten Ausschalt-Sperr-Entitaeten `off` sind und
 - alle Bewegungs- und Belegungssensoren im Bereich mindestens fuer die Bestaetigungsdauer inaktiv sind.
 
 Der regulaere Ende-von-Aktivitaet-Trigger wartet zusaetzlich die am Schieberegler eingestellte Nachlaufzeit ab. Sie kann in ganzen Minuten von 1 bis 60 eingestellt werden. Mit den Standardwerten wird der Trigger nach 5 Minuten ausgeloest und bestaetigt dabei mindestens 3 Minuten gemeinsame Inaktivitaet.
@@ -130,6 +132,7 @@ Die Einschaltbedingungen gelten nur fuer den automatischen Start. Ein spaeterer 
 
 | Einstellung | Standard | Beschreibung |
 |---|---|---|
+| Ausschalt-Sperr-Entitaeten | leer | Alle Eintraege muessen `off` sein, damit der Echo automatisch gestoppt wird |
 | Nachlaufzeit | 5 min | Schieberegler fuer die Wartezeit nach dem Ende eines Aktivitaetssignals; einstellbar von 1 bis 60 Minuten |
 | Bestaetigte Inaktivitaet | 3 min | Mindestdauer, fuer die alle Sensoren inaktiv sein muessen |
 
@@ -215,11 +218,13 @@ Die installierte Automation **Echo Bad** verwendet folgende raumspezifische Wert
 | Radio-an-Befehl | `spiele bayern 1` |
 | Aktiv ab / bis | `05:00:00` / `20:30:00` |
 | Mindest-Ruhezeit des Gruppenplayers | 0 s |
+| Ausschalt-Sperr-Entitaet | `input_boolean.badezeit` |
 | Nachlaufzeit | 5 min |
+| Bestaetigte Inaktivitaet | 3 min |
 | Einschaltlautstaerke | 10 % |
 | Lautstaerke-Zeitstempel | `input_datetime.echo_bad_lautstaerke_gesetzt` |
 
-Die bestehende Entity-ID bleibt `automation.bad_motion_echo_on`; ihr sichtbarer Name lautet **Echo Bad**. Die separate Automation `automation.bad_echo_off_motion` bleibt aktiv, weil sie waehrend `input_boolean.badezeit` das Ausschalten verhindert. Die Bestaetigungsdauer im Blueprint ist deshalb fuer diese Instanz auf 24 Stunden gesetzt, sodass nur die bestehende Bad-Ausschaltautomation den Echo stoppt.
+Die bestehende Entity-ID bleibt `automation.bad_motion_echo_on`; ihr sichtbarer Name lautet **Echo Bad**. Die bisherige Automation `automation.bad_echo_off_motion` wurde nach der Umstellung entfernt. Solange `input_boolean.badezeit` aktiv ist, verhindert die Ausschalt-Sperre das automatische Stoppen.
 
 ## Beispiel Gaestezimmer 1
 
@@ -252,6 +257,11 @@ Danach in Home Assistant die Automationen und Blueprints neu laden. Anschliessen
 Bei einer Aktualisierung ueber die in `source_url` hinterlegte GitHub-Datei kann der Blueprint in Home Assistant erneut importiert werden. Bestehende Blueprint-Automationen verwenden die aktualisierte Logik nach dem Neuladen automatisch.
 
 ## Aenderungen
+
+### Version 1.5.0
+
+- Mehrfachauswahl fuer Ausschalt-Sperr-Entitaeten hinzugefuegt
+- Automatischer Stopp erfolgt nur, wenn alle ausgewaehlten Sperren `off` sind
 
 ### Version 1.4.0
 
