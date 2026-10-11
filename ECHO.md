@@ -182,6 +182,26 @@ Die installierte Automation **Echo Küche** verwendet folgende raumspezifische W
 
 Die bestehende Entity-ID der umgebauten Automation bleibt `automation.alexa_kuche_scheiss_programm`; ihr sichtbarer Name lautet **Echo Küche**. Die bisherigen Automationen `automation.kuche_echo_on_motion` und `automation.kuche_echo_off_motion` wurden nach der Umstellung entfernt.
 
+## Beispiel Werkstatt
+
+Die installierte Automation **Echo Werkstatt** verwendet folgende raumspezifische Werte:
+
+| Einstellung | Wert |
+|---|---|
+| Bereich | `werkstatt` |
+| Echo | `media_player.echo_werkstatt` |
+| Ansage-Script | `script.notify_alexa_werkstatt` |
+| Aktiv ab / bis | `05:00:00` / `21:30:00` |
+| Mindest-Ruhezeit des Gruppenplayers | 0 s |
+| Inaktivitaet bis zum Ausschalt-Trigger | 8 min |
+| Bestaetigte Inaktivitaet | 3 min |
+| Einschaltlautstaerke | 30 % |
+| Lautstaerke-Zeitstempel | `input_datetime.echo_werkstatt_lautstaerke_gesetzt` |
+| Spotify-Ausweichbefehl | `Spiel Bayern 2` |
+| Spotify-Pruefung | alle vorhandenen Echo-Player |
+
+Die bestehende Entity-ID der umgebauten Automation bleibt `automation.werkstatt_echo_on_motion`; ihr sichtbarer Name lautet **Echo Werkstatt**. Die bisherige Automation `automation.echo_werkstatt_off_motion` wurde nach der Umstellung entfernt.
+
 ## Installation
 
 Datei in das Blueprint-Verzeichnis kopieren, zum Beispiel:
