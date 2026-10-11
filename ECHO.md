@@ -2,7 +2,7 @@
 
 `EchoAutomation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
-**Aktuelle Blueprint-Version: 1.0.1**
+**Aktuelle Blueprint-Version: 1.1.0**
 
 ## Voraussetzungen
 
@@ -29,6 +29,7 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 - Beruecksichtigung eines uebergeordneten Echo-Gruppenplayers
 - Zeitfenster und Sperr-Entitaeten fuer den automatischen Start
 - Globale Erreichbarkeitspruefung des ausgewaehlten Echo
+- Einstellbare Einschaltlautstaerke beim ersten automatischen Start des Tages
 
 ## Erreichbarkeitspruefung
 
@@ -49,6 +50,8 @@ Bewegung oder Belegung im ausgewaehlten Bereich startet den Einschaltzweig. Die 
 5. Der ausgewaehlte Echo spielt aktuell nicht.
 
 Ist das aktuelle Radioprogramm in der Liste der unerwuenschten Programme enthalten, wird direkt der alternative Befehl ausgefuehrt. Andernfalls wird der Radio-an-Befehl verwendet.
+
+Vor Ansage und Wiedergabe prueft der Blueprint den konfigurierten Lautstaerke-Zeitstempel. Wurde die Einschaltlautstaerke am aktuellen Kalendertag noch nicht gesetzt, stellt er den Echo auf den Wert des Lautstaerke-Schiebers und aktualisiert danach den Zeitstempel. Alle weiteren automatischen Starts am selben Tag behalten die dann aktuelle Lautstaerke bei. Ohne ausgewaehlten Zeitstempel-Helfer ist diese Funktion deaktiviert.
 
 ### Laufendes Programm wechseln
 
@@ -90,6 +93,8 @@ Der regulaere Ende-von-Aktivitaet-Trigger wartet zusaetzlich die konfigurierte T
 | Alternativer Musikbefehl | `Spiele Musik, die mir gefällt, von Spotify in zufälliger Reihenfolge` | Befehl bei einem unerwuenschten Programm |
 | Titel des laufenden Radiosenders | `BR1 - Oberbayern` | Erwarteter Wert des Echo-Attributs `media_title` |
 | Unerwuenschte Programme | siehe unten | Exakte Zustaende des Programmsensors, die einen Wechsel ausloesen |
+| Einschaltlautstaerke | 30 % | Lautstaerke beim ersten automatischen Start des Kalendertags |
+| Zeitstempel fuer die Einschaltlautstaerke | leer | `input_datetime` mit Datum und Uhrzeit; aktiviert die einmalige taegliche Einstellung |
 
 Die Standardliste enthaelt:
 
@@ -144,6 +149,8 @@ Die installierte Automation **Echo Arbeitszimmer** verwendet unter anderem folge
 | Ansage-Script | `script.notify_alexa_arbeitszimmer` |
 | Alternativer Musikbefehl | `Spiele Musik, die mir gefällt auf Spotify, in zufälliger Reihenfolge.` |
 | Zusaetzlicher Programmname | `Heute im Stadion` |
+| Einschaltlautstaerke | 30 % |
+| Lautstaerke-Zeitstempel | `input_datetime.echo_arbeitszimmer_lautstaerke_gesetzt` |
 
 Die bestehende Entity-ID der umgebauten Automation bleibt `automation.echo_arbeitszimmer_scheiss_programm`; ihr sichtbarer Name lautet **Echo Arbeitszimmer**.
 
@@ -160,6 +167,12 @@ Danach in Home Assistant die Automationen und Blueprints neu laden. Anschliessen
 Bei einer Aktualisierung ueber die in `source_url` hinterlegte GitHub-Datei kann der Blueprint in Home Assistant erneut importiert werden. Bestehende Blueprint-Automationen verwenden die aktualisierte Logik nach dem Neuladen automatisch.
 
 ## Aenderungen
+
+### Version 1.1.0
+
+- Schieber fuer die Einschaltlautstaerke hinzugefuegt
+- Lautstaerke wird nur beim ersten automatischen Start eines Kalendertags gesetzt
+- Optionaler `input_datetime` speichert den letzten Ausfuehrungszeitpunkt dauerhaft
 
 ### Version 1.0.1
 
