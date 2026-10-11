@@ -244,6 +244,23 @@ Die installierte Automation **Echo Gaestezimmer 1** verwendet folgende raumspezi
 
 Die neue Automation besitzt die Entity-ID `automation.echo_gastezimmer_1` und verwendet den Blueprint vollstaendig fuer Start, Programmwechsel und Stopp.
 
+## Beispiel Buegelzimmer
+
+Die installierte Automation **Echo Buegelzimmer** verwendet folgende raumspezifische Werte:
+
+| Einstellung | Wert |
+|---|---|
+| Bereich | `bugelzimmer` |
+| Echo | `media_player.echo_bugelzimmer` |
+| Ansage-Script | `script.notify_alexa_bugelzimmer` |
+| Aktiv ab / bis | `05:00:00` / `20:30:00` |
+| Nachlaufzeit | 5 min |
+| Bestaetigte Inaktivitaet | 3 min |
+| Einschaltlautstaerke | 30 % |
+| Lautstaerke-Zeitstempel | `input_datetime.echo_bugelzimmer_lautstaerke_gesetzt` |
+
+Die neue Automation besitzt die Entity-ID `automation.echo_bugelzimmer`. Ist der Echo `unavailable` oder `unknown`, beendet der Blueprint den Lauf ohne Ansage oder Wiedergabebefehl.
+
 ## Installation
 
 Datei in das Blueprint-Verzeichnis kopieren, zum Beispiel:
