@@ -40,7 +40,7 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 
 ## Erreichbarkeitspruefung
 
-Die erste Aktion jedes Automationslaufs prueft den Zustand des ausgewaehlten Echo mit `has_value()`. Fehlt die Entitaet oder besitzt der `media_player` den Zustand `unavailable` oder `unknown`, wird der Lauf sofort beendet. In diesem Fall werden weder Ansagen noch Wiedergabe- oder Stoppbefehle ausgefuehrt.
+Nach der Blindzeitpruefung prueft jeder Automationslauf den Zustand des ausgewaehlten Echo mit `has_value()`. Fehlt die Entitaet oder besitzt der `media_player` den Zustand `unavailable` oder `unknown`, wird der Lauf sofort beendet. In diesem Fall werden weder Ansagen noch Wiedergabe- oder Stoppbefehle ausgefuehrt.
 
 Die Pruefung gilt fuer alle Ausloeser und damit fuer Start, Stopp, Sicherheitspruefung und Programmwechsel.
 
