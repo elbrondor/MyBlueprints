@@ -203,6 +203,42 @@ Die installierte Automation **Echo Werkstatt** verwendet folgende raumspezifisch
 
 Die bestehende Entity-ID der umgebauten Automation bleibt `automation.werkstatt_echo_on_motion`; ihr sichtbarer Name lautet **Echo Werkstatt**. Die bisherige Automation `automation.echo_werkstatt_off_motion` wurde nach der Umstellung entfernt.
 
+## Beispiel Bad
+
+Die installierte Automation **Echo Bad** verwendet folgende raumspezifische Werte:
+
+| Einstellung | Wert |
+|---|---|
+| Bereich | `bad` |
+| Echo | `media_player.echo_bad` |
+| Ansage-Script | `script.notify_alexa_bad` |
+| Radio-an-Befehl | `spiele bayern 1` |
+| Aktiv ab / bis | `05:00:00` / `20:30:00` |
+| Mindest-Ruhezeit des Gruppenplayers | 0 s |
+| Nachlaufzeit | 5 min |
+| Einschaltlautstaerke | 10 % |
+| Lautstaerke-Zeitstempel | `input_datetime.echo_bad_lautstaerke_gesetzt` |
+
+Die bestehende Entity-ID bleibt `automation.bad_motion_echo_on`; ihr sichtbarer Name lautet **Echo Bad**. Die separate Automation `automation.bad_echo_off_motion` bleibt aktiv, weil sie waehrend `input_boolean.badezeit` das Ausschalten verhindert. Die Bestaetigungsdauer im Blueprint ist deshalb fuer diese Instanz auf 24 Stunden gesetzt, sodass nur die bestehende Bad-Ausschaltautomation den Echo stoppt.
+
+## Beispiel Gaestezimmer 1
+
+Die installierte Automation **Echo Gaestezimmer 1** verwendet folgende raumspezifische Werte:
+
+| Einstellung | Wert |
+|---|---|
+| Bereich | `gastezimmer_1` |
+| Echo | `media_player.iots_echo_pop` |
+| Ansage-Script | `script.notify_alexa_gastezimmer_1` |
+| Aktiv ab / bis | `05:00:00` / `20:30:00` |
+| Nachlaufzeit | 5 min |
+| Bestaetigte Inaktivitaet | 3 min |
+| Einschaltlautstaerke | 30 % |
+| Lautstaerke-Zeitstempel | `input_datetime.echo_gaestezimmer_1_lautstaerke_gesetzt` |
+| Zusaetzliche Start-Sperre | `input_boolean.gastezimmer_belegt` |
+
+Die neue Automation besitzt die Entity-ID `automation.echo_gastezimmer_1` und verwendet den Blueprint vollstaendig fuer Start, Programmwechsel und Stopp.
+
 ## Installation
 
 Datei in das Blueprint-Verzeichnis kopieren, zum Beispiel:
