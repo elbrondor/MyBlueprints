@@ -2,7 +2,7 @@
 
 `EchoAutomation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
-**Aktuelle Blueprint-Version: 1.1.0**
+**Aktuelle Blueprint-Version: 1.2.0**
 
 ## Voraussetzungen
 
@@ -30,6 +30,8 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 - Zeitfenster und Sperr-Entitaeten fuer den automatischen Start
 - Globale Erreichbarkeitspruefung des ausgewaehlten Echo
 - Einstellbare Einschaltlautstaerke beim ersten automatischen Start des Tages
+- Pruefung, ob Spotify bereits auf einem anderen Echo laeuft
+- Konfigurierbarer Ausweichbefehl bei belegtem Spotify
 
 ## Erreichbarkeitspruefung
 
@@ -52,6 +54,8 @@ Bewegung oder Belegung im ausgewaehlten Bereich startet den Einschaltzweig. Die 
 Ist das aktuelle Radioprogramm in der Liste der unerwuenschten Programme enthalten, wird direkt der alternative Befehl ausgefuehrt. Andernfalls wird der Radio-an-Befehl verwendet.
 
 Vor Ansage und Wiedergabe prueft der Blueprint den konfigurierten Lautstaerke-Zeitstempel. Wurde die Einschaltlautstaerke am aktuellen Kalendertag noch nicht gesetzt, stellt er den Echo auf den Wert des Lautstaerke-Schiebers und aktualisiert danach den Zeitstempel. Alle weiteren automatischen Starts am selben Tag behalten die dann aktuelle Lautstaerke bei. Ohne ausgewaehlten Zeitstempel-Helfer ist diese Funktion deaktiviert.
+
+Soll wegen eines unerwuenschten Programms zu Spotify gewechselt werden, prueft der Blueprint zuvor alle konfigurierten Spotify-Player. Spielt mindestens einer dieser Player und verweist dessen `entity_picture` auf Spotifys CDN `scdn.co`, gilt Spotify als belegt. Statt des Spotify-Befehls wird dann der konfigurierbare Ausweichbefehl ausgefuehrt. Der Standard dafuer ist `Spiel Bayern 2`.
 
 ### Laufendes Programm wechseln
 
@@ -91,6 +95,8 @@ Der regulaere Ende-von-Aktivitaet-Trigger wartet zusaetzlich die konfigurierte T
 |---|---|---|
 | Radio-an-Befehl | `Spiel Bayern eins` | Sprachbefehl fuer die erste Radio-Wiedergabe |
 | Alternativer Musikbefehl | `Spiele Musik, die mir gefällt, von Spotify in zufälliger Reihenfolge` | Befehl bei einem unerwuenschten Programm |
+| Alternative bei bereits laufendem Spotify | `Spiel Bayern 2` | Ausweichbefehl, wenn Spotify schon auf einem ausgewaehlten Player laeuft |
+| Player fuer die Spotify-Pruefung | leer | Echo-Player, die auf aktive Spotify-Wiedergabe geprueft werden |
 | Titel des laufenden Radiosenders | `BR1 - Oberbayern` | Erwarteter Wert des Echo-Attributs `media_title` |
 | Unerwuenschte Programme | siehe unten | Exakte Zustaende des Programmsensors, die einen Wechsel ausloesen |
 | Einschaltlautstaerke | 30 % | Lautstaerke beim ersten automatischen Start des Kalendertags |
@@ -151,6 +157,8 @@ Die installierte Automation **Echo Arbeitszimmer** verwendet unter anderem folge
 | Zusaetzlicher Programmname | `Heute im Stadion` |
 | Einschaltlautstaerke | 10 % |
 | Lautstaerke-Zeitstempel | `input_datetime.echo_arbeitszimmer_lautstaerke_gesetzt` |
+| Spotify-Ausweichbefehl | `Spiel Bayern 2` |
+| Spotify-Pruefung | alle vorhandenen Echo-Player |
 
 Die bestehende Entity-ID der umgebauten Automation bleibt `automation.echo_arbeitszimmer_scheiss_programm`; ihr sichtbarer Name lautet **Echo Arbeitszimmer**.
 
@@ -165,6 +173,8 @@ Die installierte Automation **Echo Küche** verwendet folgende raumspezifische W
 | Ansage-Script | `script.notify_alexa_kuche` |
 | Einschaltlautstaerke | 27 % |
 | Lautstaerke-Zeitstempel | `input_datetime.echo_kueche_lautstaerke_gesetzt` |
+| Spotify-Ausweichbefehl | `Spiel Bayern 2` |
+| Spotify-Pruefung | alle vorhandenen Echo-Player |
 
 Die bestehende Entity-ID der umgebauten Automation bleibt `automation.alexa_kuche_scheiss_programm`; ihr sichtbarer Name lautet **Echo Küche**. Die bisherigen Automationen `automation.kuche_echo_on_motion` und `automation.kuche_echo_off_motion` wurden nach der Umstellung entfernt.
 
@@ -181,6 +191,12 @@ Danach in Home Assistant die Automationen und Blueprints neu laden. Anschliessen
 Bei einer Aktualisierung ueber die in `source_url` hinterlegte GitHub-Datei kann der Blueprint in Home Assistant erneut importiert werden. Bestehende Blueprint-Automationen verwenden die aktualisierte Logik nach dem Neuladen automatisch.
 
 ## Aenderungen
+
+### Version 1.2.0
+
+- Mehrfachauswahl der auf Spotify zu pruefenden Media Player hinzugefuegt
+- Aktive Spotify-Wiedergabe wird ueber das Spotify-CDN im Cover-Attribut erkannt
+- Konfigurierbarer Ausweichbefehl mit Standard `Spiel Bayern 2` hinzugefuegt
 
 ### Version 1.1.0
 

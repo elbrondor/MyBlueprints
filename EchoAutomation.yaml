@@ -1,11 +1,11 @@
 # =============================================================================
 # EchoAutomation.yaml
 #
-# VERSION: 1.1.0
+# VERSION: 1.2.0
 # =============================================================================
 
 blueprint:
-  name: EchoAutomation V1.1.0
+  name: EchoAutomation V1.2.0
   description: >
     Startet bei Bewegung oder Belegung einen Radiosender auf einem Amazon
     Echo. Bei unerwuenschtem Programm wird stattdessen ein alternativer
@@ -83,6 +83,25 @@ blueprint:
           selector:
             text:
               multiline: true
+        spotify_busy_command:
+          name: Alternative bei bereits laufendem Spotify
+          description: >
+            Wird statt des Spotify-Befehls ausgefuehrt, wenn Spotify bereits
+            auf einem der ausgewaehlten Player laeuft.
+          default: Spiel Bayern 2
+          selector:
+            text: {}
+        spotify_players:
+          name: Player fuer die Spotify-Pruefung
+          description: >
+            Echo-Player, auf denen eine laufende Spotify-Wiedergabe erkannt
+            werden soll. Ohne Auswahl wird Spotify nicht geprueft.
+          default: []
+          selector:
+            entity:
+              filter:
+                - domain: media_player
+              multiple: true
         radio_media_title:
           name: Titel des laufenden Radiosenders
           description: >
@@ -192,6 +211,19 @@ variables:
   program_sensor: !input program_sensor
   radio_command: !input radio_command
   alternative_command: !input alternative_command
+  spotify_busy_command: !input spotify_busy_command
+  spotify_players: !input spotify_players
+  spotify_is_playing: >
+    {% set ns = namespace(active=false) %}
+    {% for player in expand(spotify_players) %}
+      {% set picture = player.attributes.entity_picture | default('', true) %}
+      {% if player.state == 'playing' and 'scdn.co' in picture %}
+        {% set ns.active = true %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.active }}
+  selected_alternative_command: >
+    {{ spotify_busy_command if spotify_is_playing | bool else alternative_command }}
   startup_volume: !input startup_volume
   startup_volume_timestamp: !input startup_volume_timestamp
 
@@ -290,14 +322,20 @@ actions:
                     data:
                       variables:
                         message: >
-                          Oh je, jetzt wuerde {{ states(program_sensor) }} laufen.
-                          Ich starte lieber Musik von Spotify.
+                          {% if spotify_is_playing | bool %}
+                            Oh je, jetzt wuerde {{ states(program_sensor) }} laufen.
+                            Spotify laeuft bereits auf einem anderen Geraet.
+                            Ich starte stattdessen die Radio-Alternative.
+                          {% else %}
+                            Oh je, jetzt wuerde {{ states(program_sensor) }} laufen.
+                            Ich starte lieber Musik von Spotify.
+                          {% endif %}
                   - action: media_player.play_media
                     target:
                       entity_id: !input echo_player
                     data:
                       media:
-                        media_content_id: "{{ alternative_command }}"
+                        media_content_id: "{{ selected_alternative_command }}"
                         media_content_type: custom
                         metadata: {}
             default:
@@ -374,13 +412,19 @@ actions:
             data:
               variables:
                 message: >
-                  In Bayern 1 laeuft gerade {{ states(program_sensor) }}.
-                  Darum spiele ich lieber Musik auf Spotify.
+                  {% if spotify_is_playing | bool %}
+                    In Bayern 1 laeuft gerade {{ states(program_sensor) }}.
+                    Spotify laeuft bereits auf einem anderen Geraet.
+                    Darum starte ich die Radio-Alternative.
+                  {% else %}
+                    In Bayern 1 laeuft gerade {{ states(program_sensor) }}.
+                    Darum spiele ich lieber Musik auf Spotify.
+                  {% endif %}
           - action: media_player.play_media
             target:
               entity_id: !input echo_player
             data:
               media:
-                media_content_id: "{{ alternative_command }}"
+                media_content_id: "{{ selected_alternative_command }}"
                 media_content_type: custom
                 metadata: {}
