@@ -2,7 +2,7 @@
 
 `echo_automation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
-**Aktuelle Blueprint-Version: 1.5.0**
+**Aktuelle Blueprint-Version: 1.6.0**
 
 ## Voraussetzungen
 
@@ -35,12 +35,18 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 - Erneute Startpruefung, wenn der konfigurierte Echo wieder online kommt
 - Einstellbare Nachlaufzeit von 1 bis 60 Minuten
 - Separate Sperr-Entitaeten fuer das automatische Ausschalten
+- Einstellbare Blindzeit von 1 bis 600 Sekunden zwischen Automationslaeufen
 
 ## Erreichbarkeitspruefung
 
 Die erste Aktion jedes Automationslaufs prueft den Zustand des ausgewaehlten Echo mit `has_value()`. Fehlt die Entitaet oder besitzt der `media_player` den Zustand `unavailable` oder `unknown`, wird der Lauf sofort beendet. In diesem Fall werden weder Ansagen noch Wiedergabe- oder Stoppbefehle ausgefuehrt.
 
 Die Pruefung gilt fuer alle Ausloeser und damit fuer Start, Stopp, Sicherheitspruefung und Programmwechsel.
+
+Vor der Erreichbarkeitspruefung vergleicht der Blueprint den vorherigen
+Laufzeitpunkt der Automation mit der konfigurierten Blindzeit. Ist der Abstand
+kleiner, endet der neue Lauf sofort, ohne eine Aktion auszufuehren. Die
+Automation bleibt dabei nicht aktiv und wartet nicht mit einer Verzoegerung.
 
 ## Ablauf
 
@@ -125,8 +131,11 @@ Die Programmnamen werden exakt verglichen. Abweichende Schreibweisen des Sensors
 | Aktiv ab | `05:00:00` | Beginn des erlaubten Startzeitraums |
 | Aktiv bis | `20:30:00` | Ende des erlaubten Startzeitraums |
 | Mindest-Ruhezeit des Gruppenplayers | 10 min | So lange darf der Gruppenplayer nicht gespielt haben |
+| Blindzeit zwischen Automationslaeufen | 60 s | Mindestabstand zwischen Laeufen; Schieberegler von 1 bis 600 Sekunden |
 
-Die Einschaltbedingungen gelten nur fuer den automatischen Start. Ein spaeterer Programmwechsel und das automatische Stoppen bleiben ausserhalb dieses Zeitfensters aktiv.
+Die Blindzeit gilt fuer jeden Automationslauf. Die uebrigen Einschaltbedingungen
+gelten nur fuer den automatischen Start. Ein spaeterer Programmwechsel und das
+automatische Stoppen bleiben ausserhalb des Zeitfensters aktiv.
 
 ### Ausschaltverhalten
 
@@ -167,6 +176,7 @@ Die installierte Automation **Echo Arbeitszimmer** verwendet unter anderem folge
 | Lautstaerke-Zeitstempel | `input_datetime.echo_arbeitszimmer_lautstaerke_gesetzt` |
 | Spotify-Ausweichbefehl | `Spiel Bayern 2` |
 | Spotify-Pruefung | alle vorhandenen Echo-Player |
+| Blindzeit | 60 s |
 
 Die bestehende Entity-ID der umgebauten Automation bleibt `automation.echo_arbeitszimmer_scheiss_programm`; ihr sichtbarer Name lautet **Echo Arbeitszimmer**.
 

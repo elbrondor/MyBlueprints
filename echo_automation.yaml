@@ -1,11 +1,11 @@
 # =============================================================================
 # echo_automation.yaml
 #
-# VERSION: 1.5.1
+# VERSION: 1.6.0
 # =============================================================================
 
 blueprint:
-  name: EchoAutomation V1.5.1
+  name: EchoAutomation V1.6.0
   description: >
     Startet bei Bewegung oder Belegung einen Radiosender auf einem Amazon
     Echo. Bei unerwuenschtem Programm wird stattdessen ein alternativer
@@ -183,6 +183,19 @@ blueprint:
             minutes: 10
           selector:
             duration: {}
+        blind_time:
+          name: Blindzeit zwischen Automationslaeufen
+          description: >
+            Neue Ausloeser werden ohne Aktion beendet, wenn der vorherige
+            Automationslauf weniger als diese Anzahl Sekunden zurueckliegt.
+          default: 60
+          selector:
+            number:
+              min: 1
+              max: 600
+              step: 1
+              unit_of_measurement: s
+              mode: slider
 
     shutoff:
       name: Ausschaltverhalten
@@ -245,6 +258,7 @@ variables:
     {{ spotify_busy_command if spotify_is_playing | bool else alternative_command }}
   startup_volume: !input startup_volume
   startup_volume_timestamp: !input startup_volume_timestamp
+  blind_time: !input blind_time
 
 triggers:
   - id: activity_detected
@@ -263,14 +277,10 @@ triggers:
     trigger: state
     entity_id: !input echo_player
     from: unavailable
-    for:
-      seconds: 10
   - id: echo_online
     trigger: state
     entity_id: !input echo_player
     from: unknown
-    for:
-      seconds: 10
   - id: activity_cleared
     trigger: motion.cleared
     target:
@@ -301,6 +311,10 @@ triggers:
       behavior: each
 
 actions:
+  - condition: template
+    value_template: >
+      {{ this.attributes.last_triggered is none or
+         (now() - this.attributes.last_triggered).total_seconds() >= (blind_time | float(60)) }}
   - condition: template
     value_template: "{{ has_value(echo_player) }}"
   - choose:
