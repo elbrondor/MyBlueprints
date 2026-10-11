@@ -2,7 +2,7 @@
 
 `EchoAutomation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
-**Aktuelle Blueprint-Version: 1.2.0**
+**Aktuelle Blueprint-Version: 1.3.0**
 
 ## Voraussetzungen
 
@@ -32,6 +32,7 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 - Einstellbare Einschaltlautstaerke beim ersten automatischen Start des Tages
 - Pruefung, ob Spotify bereits auf einem anderen Echo laeuft
 - Konfigurierbarer Ausweichbefehl bei belegtem Spotify
+- Erneute Startpruefung, wenn der konfigurierte Echo wieder online kommt
 
 ## Erreichbarkeitspruefung
 
@@ -43,13 +44,16 @@ Die Pruefung gilt fuer alle Ausloeser und damit fuer Start, Stopp, Sicherheitspr
 
 ### Wiedergabe starten
 
-Bewegung oder Belegung im ausgewaehlten Bereich startet den Einschaltzweig. Die Wiedergabe startet nur, wenn alle folgenden Bedingungen erfuellt sind:
+Bewegung oder Belegung im ausgewaehlten Bereich startet den Einschaltzweig. Der Einschaltzweig wird ebenfalls erneut ausgewertet, wenn der konfigurierte Echo vom Zustand `unavailable` oder `unknown` zurueckkehrt. So kann eine waehrend eines Verbindungsverlusts erkannte Aktivitaet die Wiedergabe nach der Rueckkehr des Echo noch starten.
+
+Die Wiedergabe startet nur, wenn alle folgenden Bedingungen erfuellt sind:
 
 1. Der Echo ist erreichbar.
-2. Alle konfigurierten Sperr-Entitaeten besitzen den Zustand `off`.
-3. Die aktuelle Uhrzeit liegt innerhalb des konfigurierten Zeitfensters.
-4. Der uebergeordnete Gruppenplayer spielt seit mindestens der konfigurierten Ruhezeit nicht.
-5. Der ausgewaehlte Echo spielt aktuell nicht.
+2. Im ausgewaehlten Bereich wird aktuell Bewegung oder Belegung erkannt.
+3. Alle konfigurierten Sperr-Entitaeten besitzen den Zustand `off`.
+4. Die aktuelle Uhrzeit liegt innerhalb des konfigurierten Zeitfensters.
+5. Der uebergeordnete Gruppenplayer spielt seit mindestens der konfigurierten Ruhezeit nicht.
+6. Der ausgewaehlte Echo spielt aktuell nicht.
 
 Ist das aktuelle Radioprogramm in der Liste der unerwuenschten Programme enthalten, wird direkt der alternative Befehl ausgefuehrt. Andernfalls wird der Radio-an-Befehl verwendet.
 
@@ -191,6 +195,11 @@ Danach in Home Assistant die Automationen und Blueprints neu laden. Anschliessen
 Bei einer Aktualisierung ueber die in `source_url` hinterlegte GitHub-Datei kann der Blueprint in Home Assistant erneut importiert werden. Bestehende Blueprint-Automationen verwenden die aktualisierte Logik nach dem Neuladen automatisch.
 
 ## Aenderungen
+
+### Version 1.3.0
+
+- Startpruefung bei Rueckkehr des konfigurierten Echo aus `unavailable` oder `unknown` hinzugefuegt
+- Aktuelle Bewegung oder Belegung wird vor jedem automatischen Start explizit bestaetigt
 
 ### Version 1.2.0
 
