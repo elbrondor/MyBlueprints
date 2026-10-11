@@ -1,6 +1,6 @@
 # Home Assistant Blueprints
 
-Dieses Repository enthält mehrere Home-Assistant-Blueprints für die automatische Steuerung von Licht, Rollläden und Klimaanlagen.
+Dieses Repository enthält mehrere Home-Assistant-Blueprints für die automatische Steuerung von Licht, Rollläden, Klimaanlagen und Amazon-Echo-Wiedergabe.
 
 ## Blueprints
 
@@ -24,6 +24,13 @@ Automatische Steuerung einer Klimaanlage pro Raum mit Temperaturstufen, Fenster-
 
 - [Dokumentation zur Klimaanlagensteuerung](CLIMATE.md)
 - [Blueprint: ClimateAutomation.yaml](ClimateAutomation.yaml)
+
+### Amazon Echo Automation
+
+Startet bei Aktivität einen Radiosender auf einem Amazon Echo, wechselt bei konfigurierbaren unerwünschten Programmen zu einer Alternative und stoppt die Wiedergabe nach anhaltender Inaktivität.
+
+- [Dokumentation zur Echo-Steuerung](ECHO.md)
+- [Blueprint: EchoAutomation.yaml](EchoAutomation.yaml)
 
 ## Installation
 

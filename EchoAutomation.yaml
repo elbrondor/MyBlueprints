@@ -1,0 +1,344 @@
+# =============================================================================
+# EchoAutomation.yaml
+#
+# VERSION: 1.0.1
+# =============================================================================
+
+blueprint:
+  name: EchoAutomation V1.0.1
+  description: >
+    Startet bei Bewegung oder Belegung einen Radiosender auf einem Amazon
+    Echo. Bei unerwuenschtem Programm wird stattdessen ein alternativer
+    Sprachbefehl ausgefuehrt. Wechselt das laufende Radioprogramm spaeter zu
+    einem unerwuenschten Beitrag, wird ebenfalls automatisch gewechselt. Bei
+    anhaltender Inaktivitaet wird die Wiedergabe beendet.
+  domain: automation
+  author: Jonny.S@gmx.de
+  source_url: https://github.com/elbrondor/MyBlueprints/blob/master/EchoAutomation.yaml
+  homeassistant:
+    min_version: "2026.7.0"
+
+  input:
+    devices:
+      name: Bereich und Echo
+      icon: mdi:amazon-alexa
+      input:
+        activity_area:
+          name: Bereich fuer Bewegung und Belegung
+          description: Aktivitaet in diesem Bereich startet die Wiedergabe.
+          default: kuche
+          selector:
+            area: {}
+        echo_player:
+          name: Amazon Echo
+          description: Echo, auf dem Radio oder die alternative Musik laeuft.
+          default: media_player.echo_kuche
+          selector:
+            entity:
+              filter:
+                - domain: media_player
+        group_player:
+          name: Uebergeordneter Echo-Gruppenplayer
+          description: >
+            Solange dieser Player laeuft, wird der einzelne Echo weder
+            automatisch gestartet noch gestoppt.
+          default: media_player.uberall
+          selector:
+            entity:
+              filter:
+                - domain: media_player
+        program_sensor:
+          name: Aktuelles Radioprogramm
+          description: Entitaet, deren Zustand den aktuell laufenden Beitrag enthaelt.
+          default: sensor.jetzt_in_bayern_1
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        announcement_script:
+          name: Ansage-Script
+          description: >
+            Script fuer die Sprachausgabe. Der Ansagetext wird als Variable
+            "message" uebergeben.
+          default: script.notify_alexa_kuche
+          selector:
+            entity:
+              filter:
+                - domain: script
+
+    playback:
+      name: Wiedergabe
+      icon: mdi:radio
+      input:
+        radio_command:
+          name: Radio-an-Befehl
+          description: Sprachbefehl fuer die erste Wiedergabe auf dem Echo.
+          default: Spiel Bayern eins
+          selector:
+            text: {}
+        alternative_command:
+          name: Alternativer Musikbefehl
+          description: Wird bei einem unerwuenschten Radioprogramm abgespielt.
+          default: Spiele Musik, die mir gefällt, von Spotify in zufälliger Reihenfolge
+          selector:
+            text:
+              multiline: true
+        radio_media_title:
+          name: Titel des laufenden Radiosenders
+          description: >
+            Wert des Attributs media_title, an dem eine laufende
+            Radio-Wiedergabe erkannt wird.
+          default: BR1 - Oberbayern
+          selector:
+            text: {}
+        unwanted_programs:
+          name: Unerwuenschte Programme
+          description: Liste der Programmnamen, bei denen zur Alternative gewechselt wird.
+          default:
+            - Bayern 1 Heute im Stadion
+            - Evangelische Morgenfeier
+            - Katholische Morgenfeier
+          selector:
+            object: {}
+
+    restrictions:
+      name: Einschaltbedingungen
+      icon: mdi:play-circle-outline
+      collapsed: true
+      input:
+        blocking_entities:
+          name: Sperr-Entitaeten
+          description: Die Wiedergabe startet nur, wenn alle Entitaeten ausgeschaltet sind.
+          default:
+            - input_boolean.abwesend_urlaub
+            - input_boolean.gastemodus
+            - input_boolean.home_office
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+                - domain: switch
+              multiple: true
+        active_after:
+          name: Aktiv ab
+          default: "05:00:00"
+          selector:
+            time: {}
+        active_before:
+          name: Aktiv bis
+          default: "20:30:00"
+          selector:
+            time: {}
+        group_idle_duration:
+          name: Mindest-Ruhezeit des Gruppenplayers
+          description: >
+            Der Gruppenplayer muss mindestens so lange inaktiv sein, bevor
+            der Echo automatisch startet.
+          default:
+            minutes: 10
+          selector:
+            duration: {}
+
+    shutoff:
+      name: Ausschaltverhalten
+      icon: mdi:stop-circle-outline
+      collapsed: true
+      input:
+        inactivity_trigger_duration:
+          name: Inaktivitaet bis zum Ausschalt-Trigger
+          default:
+            minutes: 5
+          selector:
+            duration: {}
+        inactivity_confirmation_duration:
+          name: Bestaetigte Inaktivitaet
+          description: >
+            Vor dem Stoppen muessen alle Bewegungs- und Belegungssensoren
+            mindestens so lange inaktiv sein.
+          default:
+            minutes: 3
+          selector:
+            duration: {}
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  echo_player: !input echo_player
+  program_sensor: !input program_sensor
+  radio_command: !input radio_command
+  alternative_command: !input alternative_command
+
+triggers:
+  - id: activity_detected
+    trigger: motion.detected
+    target:
+      area_id: !input activity_area
+    options:
+      behavior: each
+  - id: activity_detected
+    trigger: occupancy.detected
+    target:
+      area_id: !input activity_area
+    options:
+      behavior: each
+  - id: activity_cleared
+    trigger: motion.cleared
+    target:
+      area_id: !input activity_area
+    options:
+      behavior: each
+      for: !input inactivity_trigger_duration
+  - id: activity_cleared
+    trigger: occupancy.cleared
+    target:
+      area_id: !input activity_area
+    options:
+      behavior: each
+      for: !input inactivity_trigger_duration
+  - id: stop_safety_check
+    trigger: time_pattern
+    minutes: "/5"
+  - id: program_check
+    trigger: state
+    entity_id: !input program_sensor
+  - id: program_check
+    trigger: media_player.started_playing
+    target:
+      entity_id: !input echo_player
+    options:
+      behavior: each
+
+actions:
+  - condition: template
+    value_template: "{{ has_value(echo_player) }}"
+  - choose:
+      - alias: Bei Aktivitaet Wiedergabe starten
+        conditions:
+          - condition: trigger
+            id: activity_detected
+          - condition: state
+            entity_id: !input blocking_entities
+            state: "off"
+          - condition: time
+            after: !input active_after
+            before: !input active_before
+          - condition: media_player.is_not_playing
+            target:
+              entity_id: !input group_player
+            options:
+              behavior: any
+              for: !input group_idle_duration
+          - condition: media_player.is_not_playing
+            target:
+              entity_id: !input echo_player
+            options:
+              behavior: any
+        sequence:
+          - choose:
+              - alias: Unerwuenschtes Programm direkt ueberspringen
+                conditions:
+                  - condition: state
+                    entity_id: !input program_sensor
+                    state: !input unwanted_programs
+                sequence:
+                  - action: script.turn_on
+                    target:
+                      entity_id: !input announcement_script
+                    data:
+                      variables:
+                        message: >
+                          Oh je, jetzt wuerde {{ states(program_sensor) }} laufen.
+                          Ich starte lieber Musik von Spotify.
+                  - action: media_player.play_media
+                    target:
+                      entity_id: !input echo_player
+                    data:
+                      media:
+                        media_content_id: "{{ alternative_command }}"
+                        media_content_type: custom
+                        metadata: {}
+            default:
+              - action: script.turn_on
+                target:
+                  entity_id: !input announcement_script
+                data:
+                  variables:
+                    message: >
+                      In Bayern 1 laeuft gerade {{ states(program_sensor) }}.
+                      Das schalte ich an.
+              - action: media_player.play_media
+                target:
+                  entity_id: !input echo_player
+                data:
+                  media:
+                    media_content_id: "{{ radio_command }}"
+                    media_content_type: custom
+                    metadata: {}
+
+      - alias: Bei anhaltender Inaktivitaet Wiedergabe stoppen
+        conditions:
+          - condition: trigger
+            id:
+              - activity_cleared
+              - stop_safety_check
+          - condition: media_player.is_not_playing
+            target:
+              entity_id: !input group_player
+            options:
+              behavior: any
+          - condition: media_player.is_playing
+            target:
+              entity_id: !input echo_player
+            options:
+              behavior: any
+          - condition: motion.is_not_detected
+            target:
+              area_id: !input activity_area
+            options:
+              behavior: all
+              for: !input inactivity_confirmation_duration
+          - condition: occupancy.is_not_detected
+            target:
+              area_id: !input activity_area
+            options:
+              behavior: all
+              for: !input inactivity_confirmation_duration
+        sequence:
+          - action: media_player.media_stop
+            target:
+              entity_id: !input echo_player
+
+      - alias: Laufendes unerwuenschtes Programm wechseln
+        conditions:
+          - condition: trigger
+            id: program_check
+          - condition: media_player.is_playing
+            target:
+              entity_id: !input echo_player
+            options:
+              behavior: any
+          - condition: state
+            entity_id: !input echo_player
+            attribute: media_title
+            state: !input radio_media_title
+          - condition: state
+            entity_id: !input program_sensor
+            state: !input unwanted_programs
+        sequence:
+          - action: script.turn_on
+            target:
+              entity_id: !input announcement_script
+            data:
+              variables:
+                message: >
+                  In Bayern 1 laeuft gerade {{ states(program_sensor) }}.
+                  Darum spiele ich lieber Musik auf Spotify.
+          - action: media_player.play_media
+            target:
+              entity_id: !input echo_player
+            data:
+              media:
+                media_content_id: "{{ alternative_command }}"
+                media_content_type: custom
+                metadata: {}
