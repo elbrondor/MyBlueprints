@@ -261,6 +261,23 @@ Die installierte Automation **Echo Buegelzimmer** verwendet folgende raumspezifi
 
 Die neue Automation besitzt die Entity-ID `automation.echo_bugelzimmer`. Ist der Echo `unavailable` oder `unknown`, beendet der Blueprint den Lauf ohne Ansage oder Wiedergabebefehl.
 
+## Beispiel Keller 2
+
+Die installierte Automation **Echo Keller 2** verwendet folgende raumspezifische Werte:
+
+| Einstellung | Wert |
+|---|---|
+| Bereich | `keller_2` |
+| Echo | `media_player.echo_keller_2` |
+| Ansage-Script | `script.notify_alexa_keller_2` |
+| Aktiv ab / bis | `05:00:00` / `20:30:00` |
+| Nachlaufzeit | 5 min |
+| Bestaetigte Inaktivitaet | 3 min |
+| Einschaltlautstaerke | 30 % |
+| Lautstaerke-Zeitstempel | `input_datetime.echo_keller_2_lautstaerke_gesetzt` |
+
+Die neue Automation besitzt die Entity-ID `automation.echo_keller_2`. Die bestehenden Automationen `automation.keller_2_alexa_ein_motion` und `automation.keller_2_alexa_aus` bleiben aktiv, weil sie ueber `switch.alexa` die Stromversorgung des Echo steuern. Der Blueprint steuert die Medienwiedergabe, sobald `media_player.echo_keller_2` erreichbar ist.
+
 ## Installation
 
 Datei in das Blueprint-Verzeichnis kopieren, zum Beispiel:
