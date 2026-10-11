@@ -2,7 +2,7 @@
 
 `echo_automation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
-**Aktuelle Blueprint-Version: 1.3.0**
+**Aktuelle Blueprint-Version: 1.4.0**
 
 ## Voraussetzungen
 
@@ -33,6 +33,7 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 - Pruefung, ob Spotify bereits auf einem anderen Echo laeuft
 - Konfigurierbarer Ausweichbefehl bei belegtem Spotify
 - Erneute Startpruefung, wenn der konfigurierte Echo wieder online kommt
+- Einstellbare Nachlaufzeit von 1 bis 60 Minuten
 
 ## Erreichbarkeitspruefung
 
@@ -79,7 +80,7 @@ Das Ausschalten wird nach Ende von Bewegung oder Belegung sowie alle 5 Minuten a
 - der uebergeordnete Gruppenplayer nicht spielt und
 - alle Bewegungs- und Belegungssensoren im Bereich mindestens fuer die Bestaetigungsdauer inaktiv sind.
 
-Der regulaere Ende-von-Aktivitaet-Trigger wartet zusaetzlich die konfigurierte Triggerdauer ab. Mit den Standardwerten wird der Trigger nach 5 Minuten ausgeloest und bestaetigt dabei mindestens 3 Minuten gemeinsame Inaktivitaet.
+Der regulaere Ende-von-Aktivitaet-Trigger wartet zusaetzlich die am Schieberegler eingestellte Nachlaufzeit ab. Sie kann in ganzen Minuten von 1 bis 60 eingestellt werden. Mit den Standardwerten wird der Trigger nach 5 Minuten ausgeloest und bestaetigt dabei mindestens 3 Minuten gemeinsame Inaktivitaet.
 
 ## Eingaben
 
@@ -129,7 +130,7 @@ Die Einschaltbedingungen gelten nur fuer den automatischen Start. Ein spaeterer 
 
 | Einstellung | Standard | Beschreibung |
 |---|---|---|
-| Inaktivitaet bis zum Ausschalt-Trigger | 5 min | Wartezeit nach dem Ende eines Aktivitaetssignals |
+| Nachlaufzeit | 5 min | Schieberegler fuer die Wartezeit nach dem Ende eines Aktivitaetssignals; einstellbar von 1 bis 60 Minuten |
 | Bestaetigte Inaktivitaet | 3 min | Mindestdauer, fuer die alle Sensoren inaktiv sein muessen |
 
 ## Schnittstelle des Ansage-Scripts
@@ -193,7 +194,7 @@ Die installierte Automation **Echo Werkstatt** verwendet folgende raumspezifisch
 | Ansage-Script | `script.notify_alexa_werkstatt` |
 | Aktiv ab / bis | `05:00:00` / `21:30:00` |
 | Mindest-Ruhezeit des Gruppenplayers | 0 s |
-| Inaktivitaet bis zum Ausschalt-Trigger | 8 min |
+| Nachlaufzeit | 8 min |
 | Bestaetigte Inaktivitaet | 3 min |
 | Einschaltlautstaerke | 30 % |
 | Lautstaerke-Zeitstempel | `input_datetime.echo_werkstatt_lautstaerke_gesetzt` |
@@ -215,6 +216,10 @@ Danach in Home Assistant die Automationen und Blueprints neu laden. Anschliessen
 Bei einer Aktualisierung ueber die in `source_url` hinterlegte GitHub-Datei kann der Blueprint in Home Assistant erneut importiert werden. Bestehende Blueprint-Automationen verwenden die aktualisierte Logik nach dem Neuladen automatisch.
 
 ## Aenderungen
+
+### Version 1.4.0
+
+- Nachlaufzeit auf einen Minutenschieber von 1 bis 60 Minuten umgestellt
 
 ### Version 1.3.0
 
