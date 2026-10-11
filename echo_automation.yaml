@@ -1,11 +1,11 @@
 # =============================================================================
 # echo_automation.yaml
 #
-# VERSION: 1.5.0
+# VERSION: 1.5.1
 # =============================================================================
 
 blueprint:
-  name: EchoAutomation V1.5.0
+  name: EchoAutomation V1.5.1
   description: >
     Startet bei Bewegung oder Belegung einen Radiosender auf einem Amazon
     Echo. Bei unerwuenschtem Programm wird stattdessen ein alternativer
@@ -263,10 +263,14 @@ triggers:
     trigger: state
     entity_id: !input echo_player
     from: unavailable
+    for:
+      seconds: 10
   - id: echo_online
     trigger: state
     entity_id: !input echo_player
     from: unknown
+    for:
+      seconds: 10
   - id: activity_cleared
     trigger: motion.cleared
     target:
