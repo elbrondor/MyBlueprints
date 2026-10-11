@@ -166,7 +166,7 @@ Die installierte Automation **Echo Küche** verwendet folgende raumspezifische W
 | Einschaltlautstaerke | 27 % |
 | Lautstaerke-Zeitstempel | `input_datetime.echo_kueche_lautstaerke_gesetzt` |
 
-Die bestehende Entity-ID der umgebauten Automation bleibt `automation.alexa_kuche_scheiss_programm`; ihr sichtbarer Name lautet **Echo Küche**. Die bisherigen Automationen `automation.kuche_echo_on_motion` und `automation.kuche_echo_off_motion` sind deaktiviert, damit sie keine zusaetzlichen Wiedergabe- oder Stoppbefehle ausloesen.
+Die bestehende Entity-ID der umgebauten Automation bleibt `automation.alexa_kuche_scheiss_programm`; ihr sichtbarer Name lautet **Echo Küche**. Die bisherigen Automationen `automation.kuche_echo_on_motion` und `automation.kuche_echo_off_motion` wurden nach der Umstellung entfernt.
 
 ## Installation
 
