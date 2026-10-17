@@ -1,11 +1,11 @@
 # =============================================================================
 # echo_automation.yaml
 #
-# VERSION: 1.8.0
+# VERSION: 1.10.0
 # =============================================================================
 
 blueprint:
-  name: EchoAutomation V1.8.0
+  name: EchoAutomation V1.10.0
   description: >
     Startet bei Bewegung oder Belegung einen Radiosender auf einem Amazon
     Echo. Bei unerwuenschtem Programm wird stattdessen ein alternativer
@@ -261,13 +261,13 @@ variables:
   blind_time: !input blind_time
 
 triggers:
-  - id: activity_detected
+  - id: motion_detected
     trigger: motion.detected
     target:
       area_id: !input activity_area
     options:
       behavior: each
-  - id: activity_detected
+  - id: occupancy_detected
     trigger: occupancy.detected
     target:
       area_id: !input activity_area
@@ -311,44 +311,36 @@ triggers:
       behavior: each
 
 actions:
+  - if:
+      - condition: trigger
+        id: motion_detected
+      - condition: occupancy.is_detected
+        target:
+          area_id: !input activity_area
+        options:
+          behavior: any
+          for:
+            minutes: 1
+    then:
+      - stop: Belegung besteht bereits seit mindestens einer Minute
   - condition: template
     value_template: >
       {{ this.attributes.last_triggered is none or
          (now() - this.attributes.last_triggered).total_seconds() >= (blind_time | float(60)) }}
   - condition: template
     value_template: "{{ has_value(echo_player) }}"
-  - if:
-      - condition: state
-        entity_id: !input echo_player
-        state: playing
-    then:
-      - action: homeassistant.update_entity
-        target:
-          entity_id: !input echo_player
-  - variables:
-      echo_media_position_before: "{{ state_attr(echo_player, 'media_position') }}"
-  - if:
-      - condition: state
-        entity_id: !input echo_player
-        state: playing
-    then:
-      - delay:
-          seconds: 10
-      - action: homeassistant.update_entity
-        target:
-          entity_id: !input echo_player
-  - variables:
-      echo_is_actually_playing: >
-        {% set position_after = state_attr(echo_player, 'media_position') %}
-        {{ is_state(echo_player, 'playing') and
-           (echo_media_position_before is none or position_after is none or
-            (position_after | float(0)) != (echo_media_position_before | float(0))) }}
+  - action: homeassistant.update_entity
+    target:
+      entity_id: !input echo_player
+  - condition: template
+    value_template: "{{ has_value(echo_player) }}"
   - choose:
       - alias: Bei Aktivitaet Wiedergabe starten
         conditions:
           - condition: trigger
             id:
-              - activity_detected
+              - motion_detected
+              - occupancy_detected
               - echo_online
           - condition: or
             conditions:
@@ -374,8 +366,11 @@ actions:
             options:
               behavior: any
               for: !input group_idle_duration
-          - condition: template
-            value_template: "{{ not echo_is_actually_playing }}"
+          - condition: media_player.is_not_playing
+            target:
+              entity_id: !input echo_player
+            options:
+              behavior: any
         sequence:
           - if:
               - condition: template
@@ -454,8 +449,11 @@ actions:
           - condition: state
             entity_id: !input shutoff_blocking_entities
             state: "off"
-          - condition: template
-            value_template: "{{ echo_is_actually_playing }}"
+          - condition: media_player.is_playing
+            target:
+              entity_id: !input echo_player
+            options:
+              behavior: any
           - condition: motion.is_not_detected
             target:
               area_id: !input activity_area
@@ -477,8 +475,11 @@ actions:
         conditions:
           - condition: trigger
             id: program_check
-          - condition: template
-            value_template: "{{ echo_is_actually_playing }}"
+          - condition: media_player.is_playing
+            target:
+              entity_id: !input echo_player
+            options:
+              behavior: any
           - condition: state
             entity_id: !input echo_player
             attribute: media_title

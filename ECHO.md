@@ -2,7 +2,7 @@
 
 `echo_automation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
-**Aktuelle Blueprint-Version: 1.8.0**
+**Aktuelle Blueprint-Version: 1.10.0**
 
 ## Voraussetzungen
 
@@ -19,6 +19,7 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 
 - Start der Radiowiedergabe bei Bewegung oder Belegung
 - Gemeinsame Auswertung aller Bewegungs- und Belegungssensoren eines Bereichs
+- Sofortiger Abbruch von Bewegungsausloesern bei bereits bestaetigter Belegung
 - Konfigurierbarer Sprachbefehl fuer die erste Wiedergabe
 - Konfigurierbarer alternativer Sprachbefehl fuer unerwuenschte Programme
 - Sofortige Auswahl der Alternative, wenn bereits beim Start ein unerwuenschtes Programm laeuft
@@ -36,39 +37,51 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 - Einstellbare Nachlaufzeit von 1 bis 60 Minuten
 - Separate Sperr-Entitaeten fuer das automatische Ausschalten
 - Einstellbare Blindzeit von 1 bis 600 Sekunden zwischen Automationslaeufen
-- Positionspruefung bei einem vom Echo gemeldeten `playing`-Status
+- Aktualisierung des Echo-Zustands vor der Wiedergabepruefung
 - Atomare Automationslaeufe; neue Ausloeser werden waehrend eines Laufs verworfen
 
 ## Erreichbarkeitspruefung
 
-Nach der Blindzeitpruefung prueft jeder Automationslauf den Zustand des ausgewaehlten Echo mit `has_value()`. Fehlt die Entitaet oder besitzt der `media_player` den Zustand `unavailable` oder `unknown`, wird der Lauf sofort beendet. In diesem Fall werden weder Ansagen noch Wiedergabe- oder Stoppbefehle ausgefuehrt.
+Nach dem Fruehabbruch fuer Bewegung bei bestaetigter Belegung und der
+Blindzeitpruefung prueft jeder verbleibende Automationslauf den Zustand des
+ausgewaehlten Echo mit `has_value()`. Fehlt die Entitaet oder besitzt der
+`media_player` den Zustand `unavailable` oder `unknown`, wird der Lauf sofort
+beendet. In diesem Fall werden weder Ansagen noch Wiedergabe- oder Stoppbefehle
+ausgefuehrt.
 
 Die Pruefung gilt fuer alle Ausloeser und damit fuer Start, Stopp, Sicherheitspruefung und Programmwechsel.
 
-Vor der Erreichbarkeitspruefung vergleicht der Blueprint den vorherigen
-Laufzeitpunkt der Automation mit der konfigurierten Blindzeit. Ist der Abstand
-kleiner, endet der neue Lauf sofort, ohne eine Aktion auszufuehren. Die
-Automation bleibt dabei nicht aktiv und wartet nicht mit einer Verzoegerung.
+Vor der Erreichbarkeitspruefung vergleicht der Blueprint bei allen nicht bereits
+wegen bestaetigter Belegung beendeten Laeufen den vorherigen Laufzeitpunkt der
+Automation mit der konfigurierten Blindzeit. Ist der Abstand kleiner, endet der
+neue Lauf sofort, ohne eine Aktion auszufuehren. Die Automation bleibt dabei
+nicht aktiv und wartet nicht mit einer Verzoegerung.
 
-Meldet der Echo danach den Zustand `playing`, aktualisiert der Blueprint die
-Entitaet und speichert die aktuelle Wiedergabeposition. Nach zehn Sekunden wird
-die Entitaet erneut aktualisiert. Nur wenn sich die Position geaendert hat, gilt die
-Wiedergabe als tatsaechlich laufend. Fehlt das Positionsattribut, wird der
-gemeldete `playing`-Status aus Sicherheitsgruenden beibehalten. Bei allen
-anderen Playerzustaenden findet diese zehnsekündige Pruefung nicht statt.
+Danach aktualisiert der Blueprint die Echo-Entitaet und wertet den aktuellen
+Playerzustand mit den nativen `media_player`-Bedingungen aus. Der Zustand
+`playing` gilt unmittelbar als laufende Wiedergabe. Eine unveraenderte oder
+fehlende `media_position` wird nicht mehr als Stillstand interpretiert, weil
+Alexa Media Player dieses Attribut bei Radio-Streams und Spotify nicht immer
+fortlaufend aktualisiert.
 
 Der Blueprint verwendet den Automationsmodus `single`. Ein laufender Durchgang
 wird daher nicht durch einen neuen Ausloeser unterbrochen oder neu gestartet.
 Neue Ausloeser werden waehrenddessen ohne Meldung verworfen. Home Assistant
 bietet fuer Automationen keine globale maximale Laufzeit. Der Blueprint besitzt
-jedoch keine unbegrenzten Warteaktionen; seine einzige feste Wartezeit ist die
-zehnsekündige Positionspruefung.
+keine unbegrenzten Warteaktionen.
 
 ## Ablauf
 
 ### Wiedergabe starten
 
 Bewegung oder Belegung im ausgewaehlten Bereich startet den Einschaltzweig. Der Einschaltzweig wird ebenfalls erneut ausgewertet, wenn der konfigurierte Echo vom Zustand `unavailable` oder `unknown` zurueckkehrt. So kann eine waehrend eines Verbindungsverlusts erkannte Aktivitaet die Wiedergabe nach der Rueckkehr des Echo noch starten.
+
+Wird der Lauf durch einen Bewegungsmelder ausgeloest und meldet mindestens ein
+Belegungssensor im Bereich bereits seit einer Minute Belegung, endet der Lauf
+sofort. Dadurch fuehren wiederholte Bewegungsmeldungen bei laenger bestehender
+Belegung weder eine Echo-Aktualisierung noch weitere Wiedergabepruefungen aus.
+Der urspruengliche Belegungsausloeser und Bewegungen innerhalb der ersten Minute
+werden weiterhin normal ausgewertet.
 
 Die Wiedergabe startet nur, wenn alle folgenden Bedingungen erfuellt sind:
 
@@ -317,6 +330,19 @@ Danach in Home Assistant die Automationen und Blueprints neu laden. Anschliessen
 Bei einer Aktualisierung ueber die in `source_url` hinterlegte GitHub-Datei kann der Blueprint in Home Assistant erneut importiert werden. Bestehende Blueprint-Automationen verwenden die aktualisierte Logik nach dem Neuladen automatisch.
 
 ## Aenderungen
+
+### Version 1.10.0
+
+- Bewegungs- und Belegungsausloeser intern getrennt
+- Bewegungslauf wird bei seit mindestens einer Minute bestehender Belegung sofort beendet
+- Echo-Aktualisierung und weitere Bedingungen werden bei diesem Fruehabbruch nicht ausgefuehrt
+
+### Version 1.9.0
+
+- Fehleranfaellige Wiedergabepruefung ueber `media_position` entfernt
+- Echo-Entitaet wird vor jeder Wiedergabepruefung aktualisiert
+- Nativer Zustand `playing` verhindert einen erneuten Start bei weiterer Bewegung
+- Zehnsekündige Wartezeit bei laufender Wiedergabe entfernt
 
 ### Version 1.5.0
 
