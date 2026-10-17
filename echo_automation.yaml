@@ -1,11 +1,11 @@
 # =============================================================================
 # echo_automation.yaml
 #
-# VERSION: 1.10.0
+# VERSION: 1.11.0
 # =============================================================================
 
 blueprint:
-  name: EchoAutomation V1.10.0
+  name: EchoAutomation V1.11.0
   description: >
     Startet bei Bewegung oder Belegung einen Radiosender auf einem Amazon
     Echo. Bei unerwuenschtem Programm wird stattdessen ein alternativer
@@ -145,6 +145,65 @@ blueprint:
             entity:
               filter:
                 - domain: input_datetime
+        manual_stop_commands:
+          name: Befehle fuer einen manuellen Wiedergabestopp
+          description: >
+            Exakte Alexa-Befehle, die den automatischen Start voruebergehend
+            sperren. Gross-/Kleinschreibung und abschliessende Satzzeichen
+            werden ignoriert.
+          default:
+            - stop
+            - stopp
+            - stoppe die musik
+            - stopp die musik
+            - musik stoppen
+            - radio stoppen
+            - wiedergabe stoppen
+            - stoppe die wiedergabe
+            - aus
+            - mach aus
+            - mach die musik aus
+            - mach das radio aus
+            - mach die wiedergabe aus
+            - musik aus
+            - radio aus
+            - schalt aus
+            - schalte aus
+            - schalte die musik aus
+            - schalte das radio aus
+            - hör auf
+            - hoer auf
+            - pause
+            - pausieren
+            - musik pausieren
+            - radio pausieren
+            - anhalten
+            - halt die musik an
+            - musik anhalten
+            - wiedergabe anhalten
+            - beenden
+            - musik beenden
+            - wiedergabe beenden
+            - leise
+            - sei leise
+            - ruhe
+            - jetzt ist ruhe
+            - sei still
+          selector:
+            object: {}
+        manual_stop_block_duration:
+          name: Sperrzeit nach manuellem Wiedergabestopp
+          description: >
+            So lange verhindert ein erkannter Stoppbefehl den automatischen
+            Start. Der Wert 0 deaktiviert diese Sperre.
+          default: 30
+          selector:
+            number:
+              min: 0
+              max: 180
+              step: 1
+              unit_of_measurement: min
+              mode: slider
 
     restrictions:
       name: Einschaltbedingungen
@@ -258,6 +317,8 @@ variables:
     {{ spotify_busy_command if spotify_is_playing | bool else alternative_command }}
   startup_volume: !input startup_volume
   startup_volume_timestamp: !input startup_volume_timestamp
+  manual_stop_commands: !input manual_stop_commands
+  manual_stop_block_duration: !input manual_stop_block_duration
   blind_time: !input blind_time
 
 triggers:
@@ -334,6 +395,28 @@ actions:
       entity_id: !input echo_player
   - condition: template
     value_template: "{{ has_value(echo_player) }}"
+  - variables:
+      echo_last_called_summary: >
+        {{ state_attr(echo_player, 'last_called_summary')
+           | default('', true)
+           | lower
+           | regex_replace('[.!?,;:]+$', '')
+           | trim }}
+      echo_last_called_timestamp: >
+        {% set raw_timestamp = state_attr(echo_player, 'last_called_timestamp') | float(0) %}
+        {{ raw_timestamp / 1000 if raw_timestamp > 10000000000 else raw_timestamp }}
+      manual_stop_is_recent: >
+        {% set age = now().timestamp() - (echo_last_called_timestamp | float(0)) %}
+        {% set ns = namespace(commands=[]) %}
+        {% for command in manual_stop_commands %}
+          {% set normalized_command = command | string | lower
+             | regex_replace('[.!?,;:]+$', '') | trim %}
+          {% set ns.commands = ns.commands + [normalized_command] %}
+        {% endfor %}
+        {{ (manual_stop_block_duration | float(30)) > 0 and
+           echo_last_called_summary in ns.commands and
+           age >= 0 and
+           age <= (manual_stop_block_duration | float(30)) * 60 }}
   - choose:
       - alias: Bei Aktivitaet Wiedergabe starten
         conditions:
@@ -360,6 +443,8 @@ actions:
           - condition: time
             after: !input active_after
             before: !input active_before
+          - condition: template
+            value_template: "{{ not manual_stop_is_recent }}"
           - condition: media_player.is_not_playing
             target:
               entity_id: !input group_player

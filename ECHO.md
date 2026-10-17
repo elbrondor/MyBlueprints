@@ -2,7 +2,7 @@
 
 `echo_automation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Radiowiedergabe auf einem Amazon Echo. Bewegung oder Belegung startet die Wiedergabe, anhaltende Inaktivitaet beendet sie. Unerwuenschte Radioprogramme werden erkannt und durch einen alternativen Sprachbefehl ersetzt.
 
-**Aktuelle Blueprint-Version: 1.10.0**
+**Aktuelle Blueprint-Version: 1.11.0**
 
 ## Voraussetzungen
 
@@ -20,6 +20,7 @@ Der Blueprint verwendet die zweckbezogenen Home-Assistant-Trigger und -Bedingung
 - Start der Radiowiedergabe bei Bewegung oder Belegung
 - Gemeinsame Auswertung aller Bewegungs- und Belegungssensoren eines Bereichs
 - Sofortiger Abbruch von Bewegungsausloesern bei bereits bestaetigter Belegung
+- Start-Sperre nach einem kuerzlich an Alexa gesprochenen Stoppbefehl
 - Konfigurierbarer Sprachbefehl fuer die erste Wiedergabe
 - Konfigurierbarer alternativer Sprachbefehl fuer unerwuenschte Programme
 - Sofortige Auswahl der Alternative, wenn bereits beim Start ein unerwuenschtes Programm laeuft
@@ -143,6 +144,14 @@ Der regulaere Ende-von-Aktivitaet-Trigger wartet zusaetzlich die am Schieberegle
 | Unerwuenschte Programme | siehe unten | Exakte Zustaende des Programmsensors, die einen Wechsel ausloesen |
 | Einschaltlautstaerke | 30 % | Lautstaerke beim ersten automatischen Start des Kalendertags |
 | Zeitstempel fuer die Einschaltlautstaerke | leer | `input_datetime` mit Datum und Uhrzeit; aktiviert die einmalige taegliche Einstellung |
+| Befehle fuer einen manuellen Wiedergabestopp | siehe unten | Exakte Werte aus `last_called_summary`, die einen automatischen Start sperren |
+| Sperrzeit nach manuellem Wiedergabestopp | 30 min | Dauer der Start-Sperre; `0` deaktiviert sie |
+
+Die Standardliste fuer einen manuellen Wiedergabestopp enthaelt unter anderem
+`stop`, `stopp`, `aus`, `mach die musik aus`, `hör auf`, `pause`, `anhalten`,
+`beenden`, `leise`, `ruhe` und `sei still`. Gross-/Kleinschreibung sowie
+abschliessende Satzzeichen werden beim Vergleich ignoriert. Weitere exakte
+Formulierungen koennen in der Blueprint-Instanz ergaenzt werden.
 
 Die Standardliste enthaelt:
 
@@ -162,9 +171,17 @@ Die Programmnamen werden exakt verglichen. Abweichende Schreibweisen des Sensors
 | Mindest-Ruhezeit des Gruppenplayers | 10 min | So lange darf der Gruppenplayer nicht gespielt haben |
 | Blindzeit zwischen Automationslaeufen | 60 s | Mindestabstand zwischen Laeufen; Schieberegler von 1 bis 600 Sekunden |
 
-Die Blindzeit gilt fuer jeden Automationslauf. Die uebrigen Einschaltbedingungen
-gelten nur fuer den automatischen Start. Ein spaeterer Programmwechsel und das
-automatische Stoppen bleiben ausserhalb des Zeitfensters aktiv.
+Die Blindzeit gilt fuer jeden Automationslauf, der nicht bereits wegen seit
+mindestens einer Minute bestehender Belegung beendet wurde. Die uebrigen
+Einschaltbedingungen gelten nur fuer den automatischen Start. Ein spaeterer
+Programmwechsel und das automatische Stoppen bleiben ausserhalb des Zeitfensters
+aktiv.
+
+Vor der Startentscheidung aktualisiert der Blueprint den Echo und liest dessen
+Attribute `last_called_summary` und `last_called_timestamp`. Entspricht der letzte
+Befehl einem konfigurierten Stoppbefehl und liegt er hoechstens 30 Minuten
+zurueck, wird die automatische Wiedergabe nicht gestartet. Diese Sperre wirkt
+nur auf den Startzweig; Sicherheitsstopp und Programmwechsel bleiben aktiv.
 
 ### Ausschaltverhalten
 
@@ -330,6 +347,12 @@ Danach in Home Assistant die Automationen und Blueprints neu laden. Anschliessen
 Bei einer Aktualisierung ueber die in `source_url` hinterlegte GitHub-Datei kann der Blueprint in Home Assistant erneut importiert werden. Bestehende Blueprint-Automationen verwenden die aktualisierte Logik nach dem Neuladen automatisch.
 
 ## Aenderungen
+
+### Version 1.11.0
+
+- Konfigurierbare Liste manueller Stoppbefehle hinzugefuegt
+- Automatischer Start wird nach einem erkannten Stoppbefehl standardmaessig 30 Minuten gesperrt
+- `last_called_summary` und `last_called_timestamp` werden nach der Echo-Aktualisierung ausgewertet
 
 ### Version 1.10.0
 
