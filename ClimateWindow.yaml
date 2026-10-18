@@ -1,19 +1,19 @@
 # =============================================================================
 # ClimateWindow.yaml
 #
-# VERSION: 1.1.0
+# VERSION: 1.1.1
 # =============================================================================
 
 blueprint:
-  name: ClimateWindow V1.1.0
+  name: ClimateWindow V1.1.1
   description: >
-    Steuert einen motorisierten Fensteroeffner anhand der absoluten
-    Luftfeuchtigkeit innen und aussen. Das Fenster wird nur geoeffnet, wenn
-    der Raum zu feucht ist, die Aussenluft ausreichend trockener ist und die
-    Aussentemperatur im erlaubten Bereich liegt. Separate Schwellwerte fuer
-    Oeffnen und Schliessen verhindern haeufige Richtungswechsel. Regen,
-    optionale Sperr-Entitaeten und ungueltige Sensordaten schliessen das
-    Fenster mit hoher Prioritaet.
+    Steuert einen motorisierten Fensteröffner anhand der absoluten
+    Luftfeuchtigkeit innen und außen. Das Fenster wird nur geöffnet, wenn
+    der Raum zu feucht ist, die Außenluft ausreichend trockener ist und die
+    Außentemperatur im erlaubten Bereich liegt. Separate Schwellwerte für
+    Öffnen und Schließen verhindern häufige Richtungswechsel. Regen,
+    optionale Sperr-Entitäten und ungültige Sensordaten schließen das
+    Fenster mit hoher Priorität.
   domain: automation
   author: Jonny.S@gmx.de
   source_url: https://github.com/elbrondor/MyBlueprints/blob/master/ClimateWindow.yaml
@@ -25,7 +25,7 @@ blueprint:
       icon: mdi:window-open-variant
       input:
         window_cover:
-          name: Fensteroeffner
+          name: Fensteröffner
           description: Das zu steuernde motorisierte Fenster.
           selector:
             entity:
@@ -33,29 +33,29 @@ blueprint:
                 - domain: cover
         indoor_absolute_humidity:
           name: Absolute Luftfeuchtigkeit innen
-          description: Sensor mit der Einheit g/m3 fuer den zu lueftenden Raum.
+          description: Sensor mit der Einheit g/m3 für den zu lüftenden Raum.
           selector:
             entity:
               filter:
                 - domain: sensor
         outdoor_absolute_humidity:
-          name: Absolute Luftfeuchtigkeit aussen
-          description: Sensor mit der Einheit g/m3 fuer die Aussenluft.
+          name: Absolute Luftfeuchtigkeit außen
+          description: Sensor mit der Einheit g/m3 für die Außenluft.
           selector:
             entity:
               filter:
                 - domain: sensor
         indoor_relative_humidity:
           name: Relative Luftfeuchtigkeit innen
-          description: Feuchtesensor des zu lueftenden Raums.
+          description: Feuchtesensor des zu lüftenden Raums.
           selector:
             entity:
               filter:
                 - domain: sensor
                   device_class: humidity
         outdoor_temperature:
-          name: Aussentemperatur
-          description: Temperatursensor fuer die Aussenluft.
+          name: Außentemperatur
+          description: Temperatursensor für die Außenluft.
           selector:
             entity:
               filter:
@@ -68,13 +68,13 @@ blueprint:
       input:
         rain_protection_enabled:
           name: Regenschutz aktivieren
-          description: Schliesst das Fenster, sobald ein Regensensor aktiv ist.
+          description: Schließt das Fenster, sobald ein Regensensor aktiv ist.
           default: true
           selector:
             boolean: {}
         rain_sensors:
           name: Regensensoren
-          description: Optionale binaere Sensoren, die bei Regen den Zustand on melden.
+          description: Optionale binäre Sensoren, die bei Regen den Zustand on melden.
           default: []
           selector:
             entity:
@@ -82,17 +82,17 @@ blueprint:
                 - domain: binary_sensor
               multiple: true
         blocking_enabled:
-          name: Sperr-Entitaet beruecksichtigen
-          description: Aktiviert die Auswertung der ausgewaehlten Sperr-Entitaeten.
+          name: Sperr-Entität berücksichtigen
+          description: Aktiviert die Auswertung der ausgewählten Sperr-Entitäten.
           default: false
           selector:
             boolean: {}
         blocking_entities:
-          name: Sperr-Entitaet
+          name: Sperr-Entität
           description: >
-            Eine oder mehrere Entitaeten, die bei Zustand on das Fenster
-            schliessen. Hier koennen zum Beispiel ein Trockner und eine
-            Abwesenheits-Entitaet ausgewaehlt werden.
+            Eine oder mehrere Entitäten, die bei Zustand on das Fenster
+            schließen. Hier können zum Beispiel ein Trockner und eine
+            Abwesenheits-Entität ausgewählt werden.
           default: []
           selector:
             entity:
@@ -103,12 +103,12 @@ blueprint:
               multiple: true
 
     thresholds:
-      name: Lueftungsgrenzen
+      name: Lüftungsgrenzen
       icon: mdi:tune-variant
       input:
         humidity_open_threshold:
-          name: Raumfeuchte zum Oeffnen
-          description: Ab dieser relativen Raumfeuchte darf geoeffnet werden.
+          name: Raumfeuchte zum Öffnen
+          description: Ab dieser relativen Raumfeuchte darf geöffnet werden.
           default: 60
           selector:
             number:
@@ -118,10 +118,10 @@ blueprint:
               unit_of_measurement: "%"
               mode: slider
         humidity_close_threshold:
-          name: Raumfeuchte zum Schliessen
+          name: Raumfeuchte zum Schließen
           description: >
             Unterhalb dieses Werts wird geschlossen. Der Wert sollte kleiner
-            als die Grenze zum Oeffnen sein.
+            als die Grenze zum Öffnen sein.
           default: 55
           selector:
             number:
@@ -131,10 +131,10 @@ blueprint:
               unit_of_measurement: "%"
               mode: slider
         absolute_open_margin:
-          name: Mindestvorteil zum Oeffnen
+          name: Mindestvorteil zum Öffnen
           description: >
             Die Innenluft muss mindestens um diesen Wert feuchter als die
-            Aussenluft sein.
+            Außenluft sein.
           default: 0.3
           selector:
             number:
@@ -144,11 +144,11 @@ blueprint:
               unit_of_measurement: g/m3
               mode: box
         absolute_close_margin:
-          name: Restvorteil zum Schliessen
+          name: Restvorteil zum Schließen
           description: >
             Wird der Feuchteunterschied kleiner oder gleich diesem Wert, wird
             geschlossen. Der Wert sollte kleiner als der Mindestvorteil zum
-            Oeffnen sein.
+            Öffnen sein.
           default: 0.1
           selector:
             number:
@@ -158,7 +158,7 @@ blueprint:
               unit_of_measurement: g/m3
               mode: box
         minimum_outdoor_temperature:
-          name: Minimale Aussentemperatur
+          name: Minimale Außentemperatur
           description: Unterhalb dieser Temperatur bleibt das Fenster geschlossen.
           default: 5
           selector:
@@ -169,7 +169,7 @@ blueprint:
               unit_of_measurement: "°C"
               mode: box
         maximum_outdoor_temperature:
-          name: Maximale Aussentemperatur
+          name: Maximale Außentemperatur
           description: Oberhalb dieser Temperatur bleibt das Fenster geschlossen.
           default: 35
           selector:
@@ -181,14 +181,14 @@ blueprint:
               mode: box
 
     winter_ventilation:
-      name: Winter-Lueftungsfenster
+      name: Winter-Lüftungsfenster
       icon: mdi:snowflake-clock
       input:
         winter_ventilation_enabled:
-          name: Winter-Lueftungsfenster aktivieren
+          name: Winter-Lüftungsfenster aktivieren
           description: >
-            Erlaubt im Winter waehrend des konfigurierten Zeitfensters eine
-            niedrigere Aussentemperatur.
+            Erlaubt im Winter während des konfigurierten Zeitfensters eine
+            niedrigere Außentemperatur.
           default: false
           selector:
             boolean: {}
@@ -201,20 +201,20 @@ blueprint:
               filter:
                 - domain: sensor
         winter_ventilation_start:
-          name: Beginn des Winter-Lueftungsfensters
+          name: Beginn des Winter-Lüftungsfensters
           default: "12:00:00"
           selector:
             time: {}
         winter_ventilation_end:
-          name: Ende des Winter-Lueftungsfensters
+          name: Ende des Winter-Lüftungsfensters
           default: "13:00:00"
           selector:
             time: {}
         winter_minimum_outdoor_temperature:
-          name: Minimale Aussentemperatur im Winter-Lueftungsfenster
+          name: Minimale Außentemperatur im Winter-Lüftungsfenster
           description: >
             Unterhalb dieser Temperatur bleibt das Fenster auch innerhalb
-            des Winter-Lueftungsfensters geschlossen.
+            des Winter-Lüftungsfensters geschlossen.
           default: 0
           selector:
             number:
@@ -340,7 +340,7 @@ triggers:
 
 actions:
   - choose:
-      - alias: Bei ungueltigen Sensordaten sicher schliessen
+      - alias: Bei ungültigen Sensordaten sicher schließen
         conditions:
           - "{{ not (sensor_values_valid | bool) }}"
         sequence:
@@ -354,10 +354,10 @@ actions:
               - action: cover.close_cover
                 target:
                   entity_id: !input window_cover
-          - stop: Kritische Sensordaten sind ungueltig. Fenster bleibt geschlossen.
+          - stop: Kritische Sensordaten sind ungültig. Fenster bleibt geschlossen.
 
   - choose:
-      - alias: Bei Regen oder aktiver Sperre schliessen
+      - alias: Bei Regen oder aktiver Sperre schließen
         conditions:
           - "{{ rain_active | bool or blocking_active | bool }}"
         sequence:
@@ -371,10 +371,10 @@ actions:
               - action: cover.close_cover
                 target:
                   entity_id: !input window_cover
-          - stop: Regenschutz oder Sperr-Entitaet ist aktiv.
+          - stop: Regenschutz oder Sperr-Entität ist aktiv.
 
   - choose:
-      - alias: Bei geeignetem Lueftungsfenster oeffnen
+      - alias: Bei geeignetem Lüftungsfenster öffnen
         conditions:
           - >
             {{
@@ -399,10 +399,10 @@ actions:
               - action: cover.open_cover
                 target:
                   entity_id: !input window_cover
-          - stop: Die Bedingungen zum Lueften sind erfuellt.
+          - stop: Die Bedingungen zum Lüften sind erfüllt.
 
   - choose:
-      - alias: Bei erreichter Ziel- oder Schutzgrenze schliessen
+      - alias: Bei erreichter Ziel- oder Schutzgrenze schließen
         conditions:
           - >
             {{
@@ -430,4 +430,4 @@ actions:
               - action: cover.close_cover
                 target:
                   entity_id: !input window_cover
-          - stop: Die Ziel- oder Schutzgrenze zum Schliessen ist erreicht.
+          - stop: Die Ziel- oder Schutzgrenze zum Schließen ist erreicht.

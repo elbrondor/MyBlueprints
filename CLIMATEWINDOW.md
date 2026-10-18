@@ -3,7 +3,7 @@
 `ClimateWindow.yaml` ist ein Home-Assistant-Blueprint zur
 feuchtegefuehrten Steuerung motorisierter Kellerfenster.
 
-**Aktuelle Blueprint-Version: 1.1.0**
+**Aktuelle Blueprint-Version: 1.1.1**
 
 ## Voraussetzungen
 
