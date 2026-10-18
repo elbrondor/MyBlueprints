@@ -34,7 +34,7 @@ Startet bei Aktivität einen Radiosender auf einem Amazon Echo, wechselt bei kon
 
 ### Feuchtegefuehrte Kellerfenster
 
-Steuert motorisierte Kellerfenster anhand der absoluten Luftfeuchtigkeit innen und aussen, der relativen Raumfeuchte und der Aussentemperatur. Regensensoren und frei konfigurierbare Sperr-Entitaeten koennen das Fenster mit hoher Prioritaet schliessen.
+Steuert motorisierte Kellerfenster anhand der absoluten Luftfeuchtigkeit innen und aussen, der relativen Raumfeuchte und der Aussentemperatur. Regensensoren und frei konfigurierbare Sperr-Entitaeten koennen das Fenster mit hoher Prioritaet schliessen; ein optionales Winter-Zeitfenster erlaubt zeitweise niedrigere Aussentemperaturen.
 
 - [Dokumentation zur Fensterlueftung](CLIMATEWINDOW.md)
 - [Blueprint: ClimateWindow.yaml](ClimateWindow.yaml)

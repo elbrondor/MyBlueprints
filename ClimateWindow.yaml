@@ -1,11 +1,11 @@
 # =============================================================================
 # ClimateWindow.yaml
 #
-# VERSION: 1.0.0
+# VERSION: 1.1.0
 # =============================================================================
 
 blueprint:
-  name: ClimateWindow V1.0.0
+  name: ClimateWindow V1.1.0
   description: >
     Steuert einen motorisierten Fensteroeffner anhand der absoluten
     Luftfeuchtigkeit innen und aussen. Das Fenster wird nur geoeffnet, wenn
@@ -166,18 +166,62 @@ blueprint:
               min: -20
               max: 25
               step: 0.5
-              unit_of_measurement: "degC"
+              unit_of_measurement: "°C"
               mode: box
         maximum_outdoor_temperature:
           name: Maximale Aussentemperatur
           description: Oberhalb dieser Temperatur bleibt das Fenster geschlossen.
-          default: 25
+          default: 35
           selector:
             number:
               min: 5
               max: 45
               step: 0.5
-              unit_of_measurement: "degC"
+              unit_of_measurement: "°C"
+              mode: box
+
+    winter_ventilation:
+      name: Winter-Lueftungsfenster
+      icon: mdi:snowflake-clock
+      input:
+        winter_ventilation_enabled:
+          name: Winter-Lueftungsfenster aktivieren
+          description: >
+            Erlaubt im Winter waehrend des konfigurierten Zeitfensters eine
+            niedrigere Aussentemperatur.
+          default: false
+          selector:
+            boolean: {}
+        season_sensor:
+          name: Saison-Sensor
+          description: Sensor, der im Winter den Zustand winter meldet.
+          default: sensor.season
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        winter_ventilation_start:
+          name: Beginn des Winter-Lueftungsfensters
+          default: "12:00:00"
+          selector:
+            time: {}
+        winter_ventilation_end:
+          name: Ende des Winter-Lueftungsfensters
+          default: "13:00:00"
+          selector:
+            time: {}
+        winter_minimum_outdoor_temperature:
+          name: Minimale Aussentemperatur im Winter-Lueftungsfenster
+          description: >
+            Unterhalb dieser Temperatur bleibt das Fenster auch innerhalb
+            des Winter-Lueftungsfensters geschlossen.
+          default: 0
+          selector:
+            number:
+              min: -20
+              max: 25
+              step: 0.5
+              unit_of_measurement: "°C"
               mode: box
 
 mode: restart
@@ -199,6 +243,11 @@ variables:
   close_margin: !input absolute_close_margin
   minimum_temperature: !input minimum_outdoor_temperature
   maximum_temperature: !input maximum_outdoor_temperature
+  use_winter_ventilation: !input winter_ventilation_enabled
+  season_entity: !input season_sensor
+  winter_start: !input winter_ventilation_start
+  winter_end: !input winter_ventilation_end
+  winter_minimum_temperature: !input winter_minimum_outdoor_temperature
   indoor_absolute_value: "{{ states(indoor_absolute_entity) | float(none) }}"
   outdoor_absolute_value: "{{ states(outdoor_absolute_entity) | float(none) }}"
   indoor_relative_value: "{{ states(indoor_relative_entity) | float(none) }}"
@@ -228,6 +277,31 @@ variables:
         | list
         | count > 0
     }}
+  temperature_allowed: >
+    {% set current_time = now().strftime('%H:%M:%S') %}
+    {% set start_time = winter_start | string %}
+    {% set end_time = winter_end | string %}
+    {% set within_winter_time =
+      (start_time <= end_time and start_time <= current_time < end_time)
+      or
+      (start_time > end_time and (current_time >= start_time or current_time < end_time))
+    %}
+    {{
+      is_number(outdoor_temperature_value)
+      and (outdoor_temperature_value | float) <= (maximum_temperature | float)
+      and
+      (
+        (outdoor_temperature_value | float) >= (minimum_temperature | float)
+        or
+        (
+          use_winter_ventilation | bool
+          and states(season_entity) == 'winter'
+          and within_winter_time
+          and (outdoor_temperature_value | float)
+            >= (winter_minimum_temperature | float)
+        )
+      )
+    }}
 
 triggers:
   - id: periodic_check
@@ -245,6 +319,15 @@ triggers:
   - id: outdoor_temperature_changed
     trigger: state
     entity_id: !input outdoor_temperature
+  - id: season_changed
+    trigger: state
+    entity_id: !input season_sensor
+  - id: winter_ventilation_started
+    trigger: time
+    at: !input winter_ventilation_start
+  - id: winter_ventilation_ended
+    trigger: time
+    at: !input winter_ventilation_end
   - id: rain_changed
     trigger: state
     entity_id: !input rain_sensors
@@ -303,11 +386,7 @@ actions:
                 - (outdoor_absolute_value | float)
               ) >= (open_margin | float)
               and
-              (outdoor_temperature_value | float)
-                >= (minimum_temperature | float)
-              and
-              (outdoor_temperature_value | float)
-                <= (maximum_temperature | float)
+              temperature_allowed | bool
             }}
         sequence:
           - if:
@@ -337,11 +416,7 @@ actions:
                   - (outdoor_absolute_value | float)
                 ) <= (close_margin | float)
                 or
-                (outdoor_temperature_value | float)
-                  < (minimum_temperature | float)
-                or
-                (outdoor_temperature_value | float)
-                  > (maximum_temperature | float)
+                not (temperature_allowed | bool)
               )
             }}
         sequence:

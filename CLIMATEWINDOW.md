@@ -3,7 +3,7 @@
 `ClimateWindow.yaml` ist ein Home-Assistant-Blueprint zur
 feuchtegefuehrten Steuerung motorisierter Kellerfenster.
 
-**Aktuelle Blueprint-Version: 1.0.0**
+**Aktuelle Blueprint-Version: 1.1.0**
 
 ## Voraussetzungen
 
@@ -20,7 +20,8 @@ Das Fenster wird nur geoeffnet, wenn alle folgenden Bedingungen erfuellt sind:
 - Die relative Raumfeuchte liegt mindestens an der Oeffnungsgrenze.
 - Die absolute Luftfeuchtigkeit innen ist um den konfigurierten Mindestwert
   hoeher als aussen.
-- Die Aussentemperatur liegt innerhalb des erlaubten Bereichs.
+- Die Aussentemperatur liegt im regulaeren Bereich oder das optionale
+  Winter-Lueftungsfenster ist aktiv und dessen Mindesttemperatur ist erreicht.
 - Weder Regenschutz noch Sperr-Entitaet sind aktiv.
 - Alle benoetigten Sensorwerte sind gueltig.
 
@@ -71,18 +72,32 @@ deaktiviert, werden alle ausgewaehlten Sperr-Entitaeten ignoriert.
 | Raumfeuchte zum Schliessen | 55 % | Ab diesem Wert oder darunter wird geschlossen |
 | Mindestvorteil zum Oeffnen | 0,3 g/m3 | Erforderlicher Unterschied innen minus aussen |
 | Restvorteil zum Schliessen | 0,1 g/m3 | Bei diesem Unterschied oder darunter wird geschlossen |
-| Minimale Aussentemperatur | 5 degC | Unterhalb bleibt das Fenster geschlossen |
-| Maximale Aussentemperatur | 25 degC | Oberhalb bleibt das Fenster geschlossen |
+| Minimale Aussentemperatur | 5 °C | Unterhalb bleibt das Fenster geschlossen |
+| Maximale Aussentemperatur | 35 °C | Oberhalb bleibt das Fenster geschlossen |
 
 Die Schliessgrenze der Raumfeuchte sollte kleiner als die Oeffnungsgrenze
 sein. Ebenso sollte der Restvorteil zum Schliessen kleiner als der
 Mindestvorteil zum Oeffnen sein.
+
+### Winter-Lueftungsfenster
+
+| Einstellung | Standard | Beschreibung |
+|---|---:|---|
+| Winter-Lueftungsfenster aktivieren | aus | Erlaubt im Winter zeitweise eine niedrigere Mindesttemperatur |
+| Saison-Sensor | `sensor.season` | Muss im Winter den Zustand `winter` melden |
+| Beginn | 12:00 Uhr | Beginn der Temperaturausnahme |
+| Ende | 13:00 Uhr | Ende der Temperaturausnahme |
+| Minimale Aussentemperatur | 0 °C | Untergrenze innerhalb des Winter-Lueftungsfensters |
+
+Die maximale Aussentemperatur gilt auch im Winter-Lueftungsfenster. Ausserhalb
+des Zeitfensters wird wieder die regulaere minimale Aussentemperatur verwendet.
 
 ## Auswertung
 
 Die Automation bewertet die Bedingungen:
 
 - bei jeder Aenderung eines konfigurierten Sensors,
+- beim Wechsel der Saison sowie zu Beginn und Ende des Winter-Lueftungsfensters,
 - bei jeder Aenderung eines Regen- oder Sperrsensors,
 - beim Start von Home Assistant,
 - sowie alle fuenf Minuten als Sicherheitspruefung.
