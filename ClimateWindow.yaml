@@ -1,0 +1,358 @@
+# =============================================================================
+# ClimateWindow.yaml
+#
+# VERSION: 1.0.0
+# =============================================================================
+
+blueprint:
+  name: ClimateWindow V1.0.0
+  description: >
+    Steuert einen motorisierten Fensteroeffner anhand der absoluten
+    Luftfeuchtigkeit innen und aussen. Das Fenster wird nur geoeffnet, wenn
+    der Raum zu feucht ist, die Aussenluft ausreichend trockener ist und die
+    Aussentemperatur im erlaubten Bereich liegt. Separate Schwellwerte fuer
+    Oeffnen und Schliessen verhindern haeufige Richtungswechsel. Regen,
+    optionale Sperr-Entitaeten und ungueltige Sensordaten schliessen das
+    Fenster mit hoher Prioritaet.
+  domain: automation
+  author: Jonny.S@gmx.de
+  source_url: https://github.com/elbrondor/MyBlueprints/blob/master/ClimateWindow.yaml
+  homeassistant:
+    min_version: "2026.7.0"
+  input:
+    assignment:
+      name: Fenster und Sensoren
+      icon: mdi:window-open-variant
+      input:
+        window_cover:
+          name: Fensteroeffner
+          description: Das zu steuernde motorisierte Fenster.
+          selector:
+            entity:
+              filter:
+                - domain: cover
+        indoor_absolute_humidity:
+          name: Absolute Luftfeuchtigkeit innen
+          description: Sensor mit der Einheit g/m3 fuer den zu lueftenden Raum.
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        outdoor_absolute_humidity:
+          name: Absolute Luftfeuchtigkeit aussen
+          description: Sensor mit der Einheit g/m3 fuer die Aussenluft.
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+        indoor_relative_humidity:
+          name: Relative Luftfeuchtigkeit innen
+          description: Feuchtesensor des zu lueftenden Raums.
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+                  device_class: humidity
+        outdoor_temperature:
+          name: Aussentemperatur
+          description: Temperatursensor fuer die Aussenluft.
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+                  device_class: temperature
+
+    safety:
+      name: Schutz und Sperren
+      icon: mdi:shield-lock-outline
+      input:
+        rain_protection_enabled:
+          name: Regenschutz aktivieren
+          description: Schliesst das Fenster, sobald ein Regensensor aktiv ist.
+          default: true
+          selector:
+            boolean: {}
+        rain_sensors:
+          name: Regensensoren
+          description: Optionale binaere Sensoren, die bei Regen den Zustand on melden.
+          default: []
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+              multiple: true
+        blocking_enabled:
+          name: Sperr-Entitaet beruecksichtigen
+          description: Aktiviert die Auswertung der ausgewaehlten Sperr-Entitaeten.
+          default: false
+          selector:
+            boolean: {}
+        blocking_entities:
+          name: Sperr-Entitaet
+          description: >
+            Eine oder mehrere Entitaeten, die bei Zustand on das Fenster
+            schliessen. Hier koennen zum Beispiel ein Trockner und eine
+            Abwesenheits-Entitaet ausgewaehlt werden.
+          default: []
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                - domain: input_boolean
+                - domain: switch
+              multiple: true
+
+    thresholds:
+      name: Lueftungsgrenzen
+      icon: mdi:tune-variant
+      input:
+        humidity_open_threshold:
+          name: Raumfeuchte zum Oeffnen
+          description: Ab dieser relativen Raumfeuchte darf geoeffnet werden.
+          default: 60
+          selector:
+            number:
+              min: 30
+              max: 90
+              step: 1
+              unit_of_measurement: "%"
+              mode: slider
+        humidity_close_threshold:
+          name: Raumfeuchte zum Schliessen
+          description: >
+            Unterhalb dieses Werts wird geschlossen. Der Wert sollte kleiner
+            als die Grenze zum Oeffnen sein.
+          default: 55
+          selector:
+            number:
+              min: 20
+              max: 85
+              step: 1
+              unit_of_measurement: "%"
+              mode: slider
+        absolute_open_margin:
+          name: Mindestvorteil zum Oeffnen
+          description: >
+            Die Innenluft muss mindestens um diesen Wert feuchter als die
+            Aussenluft sein.
+          default: 0.3
+          selector:
+            number:
+              min: 0.1
+              max: 5.0
+              step: 0.1
+              unit_of_measurement: g/m3
+              mode: box
+        absolute_close_margin:
+          name: Restvorteil zum Schliessen
+          description: >
+            Wird der Feuchteunterschied kleiner oder gleich diesem Wert, wird
+            geschlossen. Der Wert sollte kleiner als der Mindestvorteil zum
+            Oeffnen sein.
+          default: 0.1
+          selector:
+            number:
+              min: 0.0
+              max: 4.9
+              step: 0.1
+              unit_of_measurement: g/m3
+              mode: box
+        minimum_outdoor_temperature:
+          name: Minimale Aussentemperatur
+          description: Unterhalb dieser Temperatur bleibt das Fenster geschlossen.
+          default: 5
+          selector:
+            number:
+              min: -20
+              max: 25
+              step: 0.5
+              unit_of_measurement: "degC"
+              mode: box
+        maximum_outdoor_temperature:
+          name: Maximale Aussentemperatur
+          description: Oberhalb dieser Temperatur bleibt das Fenster geschlossen.
+          default: 25
+          selector:
+            number:
+              min: 5
+              max: 45
+              step: 0.5
+              unit_of_measurement: "degC"
+              mode: box
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  window_entity: !input window_cover
+  indoor_absolute_entity: !input indoor_absolute_humidity
+  outdoor_absolute_entity: !input outdoor_absolute_humidity
+  indoor_relative_entity: !input indoor_relative_humidity
+  outdoor_temperature_entity: !input outdoor_temperature
+  configured_rain_sensors: !input rain_sensors
+  configured_blocking_entities: !input blocking_entities
+  use_rain_protection: !input rain_protection_enabled
+  use_blocking_entities: !input blocking_enabled
+  open_humidity: !input humidity_open_threshold
+  close_humidity: !input humidity_close_threshold
+  open_margin: !input absolute_open_margin
+  close_margin: !input absolute_close_margin
+  minimum_temperature: !input minimum_outdoor_temperature
+  maximum_temperature: !input maximum_outdoor_temperature
+  indoor_absolute_value: "{{ states(indoor_absolute_entity) | float(none) }}"
+  outdoor_absolute_value: "{{ states(outdoor_absolute_entity) | float(none) }}"
+  indoor_relative_value: "{{ states(indoor_relative_entity) | float(none) }}"
+  outdoor_temperature_value: "{{ states(outdoor_temperature_entity) | float(none) }}"
+  sensor_values_valid: >
+    {{
+      is_number(indoor_absolute_value)
+      and is_number(outdoor_absolute_value)
+      and is_number(indoor_relative_value)
+      and is_number(outdoor_temperature_value)
+    }}
+  rain_active: >
+    {{
+      use_rain_protection | bool
+      and configured_rain_sensors | length > 0
+      and expand(configured_rain_sensors)
+        | selectattr('state', 'eq', 'on')
+        | list
+        | count > 0
+    }}
+  blocking_active: >
+    {{
+      use_blocking_entities | bool
+      and configured_blocking_entities | length > 0
+      and expand(configured_blocking_entities)
+        | selectattr('state', 'eq', 'on')
+        | list
+        | count > 0
+    }}
+
+triggers:
+  - id: periodic_check
+    trigger: time_pattern
+    minutes: "/5"
+  - id: indoor_absolute_changed
+    trigger: state
+    entity_id: !input indoor_absolute_humidity
+  - id: outdoor_absolute_changed
+    trigger: state
+    entity_id: !input outdoor_absolute_humidity
+  - id: indoor_relative_changed
+    trigger: state
+    entity_id: !input indoor_relative_humidity
+  - id: outdoor_temperature_changed
+    trigger: state
+    entity_id: !input outdoor_temperature
+  - id: rain_changed
+    trigger: state
+    entity_id: !input rain_sensors
+  - id: blocking_changed
+    trigger: state
+    entity_id: !input blocking_entities
+  - id: home_assistant_started
+    trigger: homeassistant
+    event: start
+
+actions:
+  - choose:
+      - alias: Bei ungueltigen Sensordaten sicher schliessen
+        conditions:
+          - "{{ not (sensor_values_valid | bool) }}"
+        sequence:
+          - if:
+              - condition: state
+                entity_id: !input window_cover
+                state:
+                  - open
+                  - opening
+            then:
+              - action: cover.close_cover
+                target:
+                  entity_id: !input window_cover
+          - stop: Kritische Sensordaten sind ungueltig. Fenster bleibt geschlossen.
+
+  - choose:
+      - alias: Bei Regen oder aktiver Sperre schliessen
+        conditions:
+          - "{{ rain_active | bool or blocking_active | bool }}"
+        sequence:
+          - if:
+              - condition: state
+                entity_id: !input window_cover
+                state:
+                  - open
+                  - opening
+            then:
+              - action: cover.close_cover
+                target:
+                  entity_id: !input window_cover
+          - stop: Regenschutz oder Sperr-Entitaet ist aktiv.
+
+  - choose:
+      - alias: Bei geeignetem Lueftungsfenster oeffnen
+        conditions:
+          - >
+            {{
+              sensor_values_valid | bool
+              and (indoor_relative_value | float) >= (open_humidity | float)
+              and
+              (
+                (indoor_absolute_value | float)
+                - (outdoor_absolute_value | float)
+              ) >= (open_margin | float)
+              and
+              (outdoor_temperature_value | float)
+                >= (minimum_temperature | float)
+              and
+              (outdoor_temperature_value | float)
+                <= (maximum_temperature | float)
+            }}
+        sequence:
+          - if:
+              - condition: state
+                entity_id: !input window_cover
+                state:
+                  - closed
+                  - closing
+            then:
+              - action: cover.open_cover
+                target:
+                  entity_id: !input window_cover
+          - stop: Die Bedingungen zum Lueften sind erfuellt.
+
+  - choose:
+      - alias: Bei erreichter Ziel- oder Schutzgrenze schliessen
+        conditions:
+          - >
+            {{
+              sensor_values_valid | bool
+              and
+              (
+                (indoor_relative_value | float) <= (close_humidity | float)
+                or
+                (
+                  (indoor_absolute_value | float)
+                  - (outdoor_absolute_value | float)
+                ) <= (close_margin | float)
+                or
+                (outdoor_temperature_value | float)
+                  < (minimum_temperature | float)
+                or
+                (outdoor_temperature_value | float)
+                  > (maximum_temperature | float)
+              )
+            }}
+        sequence:
+          - if:
+              - condition: state
+                entity_id: !input window_cover
+                state:
+                  - open
+                  - opening
+            then:
+              - action: cover.close_cover
+                target:
+                  entity_id: !input window_cover
+          - stop: Die Ziel- oder Schutzgrenze zum Schliessen ist erreicht.
