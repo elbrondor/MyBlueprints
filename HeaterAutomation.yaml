@@ -1,0 +1,454 @@
+# =============================================================================
+# HeaterAutomation.yaml
+#
+# VERSION: 0.1.0
+# =============================================================================
+
+blueprint:
+  name: HeaterAutomation
+  description: >
+    Version 0.1.0. Steuert einen Raumthermostat anhand von Wochenzeitplaenen,
+    Anwesenheit, Abwesenheit, offenen Fenstern und saisonalen Heizgrenzen.
+    Die erwartete Tagestiefsttemperatur wird aus der taeglichen
+    Wettervorhersage gelesen.
+  domain: automation
+  author: Jonny.S@gmx.de
+  source_url: https://github.com/elbrondor/MyBlueprints/blob/master/HeaterAutomation.yaml
+  homeassistant:
+    min_version: "2024.10.0"
+
+  input:
+    assignment:
+      name: Zuordnung
+      icon: mdi:radiator
+      input:
+        weather_entity:
+          name: Wettervorhersage
+          description: Wetter-Entitaet mit einer taeglichen Vorhersage und templow.
+          selector:
+            entity:
+              filter:
+                - domain: weather
+        climate_entity:
+          name: Thermostat
+          description: Zu steuernder Raumthermostat.
+          selector:
+            entity:
+              filter:
+                - domain: climate
+        season_entity:
+          name: Jahreszeit
+          description: Sensor mit winter, spring, summer oder autumn als Zustand.
+          default: sensor.season
+          selector:
+            entity:
+              filter:
+                - domain: sensor
+
+    schedules:
+      name: Zeitplaene
+      icon: mdi:calendar-clock
+      input:
+        comfort_schedule:
+          name: Komfort-Zeitplan
+          selector:
+            entity:
+              filter:
+                - domain: schedule
+        normal_schedule:
+          name: Normal-Zeitplan
+          selector:
+            entity:
+              filter:
+                - domain: schedule
+        night_schedule:
+          name: Nacht-Zeitplan
+          selector:
+            entity:
+              filter:
+                - domain: schedule
+
+    target_temperatures:
+      name: Solltemperaturen
+      icon: mdi:thermometer-lines
+      input:
+        target_temperature:
+          name: Solltemperatur
+          default: 19
+          selector:
+            number:
+              min: 5
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+        comfort_temperature_offset:
+          name: Komforttemperatur-Offset
+          default: 1.5
+          selector:
+            number:
+              min: -5
+              max: 5
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+        night_temperature_offset:
+          name: Nachttemperatur-Offset
+          default: -2
+          selector:
+            number:
+              min: -5
+              max: 5
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+    presence:
+      name: Anwesenheit
+      icon: mdi:account-check
+      input:
+        presence_sensors:
+          name: Anwesenheitssensoren
+          description: Bewegungs- und Belegungssensoren; on gilt als anwesend.
+          default: []
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                  device_class: motion
+                - domain: binary_sensor
+                  device_class: occupancy
+              multiple: true
+        presence_bonus:
+          name: Anwesenheitsbonus
+          default: 1
+          selector:
+            number:
+              min: 0
+              max: 5
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+    away:
+      name: Abwesenheit
+      icon: mdi:home-export-outline
+      input:
+        away_entity:
+          name: Abwesenheitsentitaet
+          description: Bei on ersetzt die Abwesenheitstemperatur den berechneten Wert.
+          selector:
+            entity:
+              filter:
+                - domain: input_boolean
+                - domain: binary_sensor
+        away_temperature:
+          name: Abwesenheitstemperatur
+          default: 16
+          selector:
+            number:
+              min: 5
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+    windows:
+      name: Offene Fenster und Tueren
+      icon: mdi:window-open-variant
+      input:
+        window_sensors:
+          name: Fenster- und Tuersensoren
+          description: Sobald mindestens ein Sensor on ist, gilt offen.
+          default: []
+          selector:
+            entity:
+              filter:
+                - domain: binary_sensor
+                  device_class: window
+                - domain: binary_sensor
+                  device_class: door
+                - domain: binary_sensor
+                  device_class: opening
+              multiple: true
+        open_temperature:
+          name: Offen-Temperatur
+          default: 5
+          selector:
+            number:
+              min: 5
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+              mode: slider
+
+    seasonal_enable_thresholds:
+      name: Saisonale Heiz-Einschaltschwellen
+      icon: mdi:weather-snowy-rainy
+      collapsed: true
+      input:
+        winter_enable_threshold:
+          name: Winter
+          default: 15
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        spring_enable_threshold:
+          name: Fruehling
+          default: 12
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        summer_enable_threshold:
+          name: Sommer
+          default: 8
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        autumn_enable_threshold:
+          name: Herbst
+          default: 12
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+
+    seasonal_disable_thresholds:
+      name: Saisonale Heiz-Ausschaltschwellen
+      icon: mdi:thermometer-chevron-up
+      collapsed: true
+      input:
+        winter_disable_threshold:
+          name: Winter
+          default: 22
+          selector:
+            number:
+              min: 5
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        spring_disable_threshold:
+          name: Fruehling
+          default: 21
+          selector:
+            number:
+              min: 5
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        summer_disable_threshold:
+          name: Sommer
+          default: 20
+          selector:
+            number:
+              min: 5
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        autumn_disable_threshold:
+          name: Herbst
+          default: 21
+          selector:
+            number:
+              min: 5
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+
+mode: restart
+max_exceeded: silent
+
+variables:
+  weather_entity: !input weather_entity
+  climate_entity: !input climate_entity
+  season_entity: !input season_entity
+  comfort_schedule: !input comfort_schedule
+  normal_schedule: !input normal_schedule
+  night_schedule: !input night_schedule
+  configured_presence_sensors: !input presence_sensors
+  configured_window_sensors: !input window_sensors
+  away_entity: !input away_entity
+  base_temperature: !input target_temperature
+  comfort_offset: !input comfort_temperature_offset
+  night_offset: !input night_temperature_offset
+  occupancy_bonus: !input presence_bonus
+  configured_away_temperature: !input away_temperature
+  configured_open_temperature: !input open_temperature
+  winter_enable: !input winter_enable_threshold
+  spring_enable: !input spring_enable_threshold
+  summer_enable: !input summer_enable_threshold
+  autumn_enable: !input autumn_enable_threshold
+  winter_disable: !input winter_disable_threshold
+  spring_disable: !input spring_disable_threshold
+  summer_disable: !input summer_disable_threshold
+  autumn_disable: !input autumn_disable_threshold
+
+triggers:
+  - id: periodic_check
+    trigger: time_pattern
+    minutes: "/15"
+  - id: home_assistant_started
+    trigger: homeassistant
+    event: start
+  - id: weather_changed
+    trigger: state
+    entity_id: !input weather_entity
+  - id: thermostat_temperature_changed
+    trigger: state
+    entity_id: !input climate_entity
+    attribute: current_temperature
+  - id: season_changed
+    trigger: state
+    entity_id: !input season_entity
+  - id: comfort_schedule_changed
+    trigger: state
+    entity_id: !input comfort_schedule
+  - id: normal_schedule_changed
+    trigger: state
+    entity_id: !input normal_schedule
+  - id: night_schedule_changed
+    trigger: state
+    entity_id: !input night_schedule
+  - id: presence_changed
+    trigger: state
+    entity_id: !input presence_sensors
+  - id: away_changed
+    trigger: state
+    entity_id: !input away_entity
+  - id: window_changed
+    trigger: state
+    entity_id: !input window_sensors
+
+actions:
+  - action: weather.get_forecasts
+    target:
+      entity_id: !input weather_entity
+    data:
+      type: daily
+    response_variable: daily_forecast
+
+  - variables:
+      forecast_items: >
+        {{ daily_forecast.get(weather_entity, {}).get('forecast', []) }}
+      expected_low: >
+        {{
+          forecast_items[0].get('templow')
+          if forecast_items | length > 0
+          else none
+        }}
+      current_temperature: >
+        {{ state_attr(climate_entity, 'current_temperature') | float(none) }}
+      current_target_temperature: >
+        {{ state_attr(climate_entity, 'temperature') | float(none) }}
+      season: "{{ states(season_entity) }}"
+      enable_threshold: >
+        {{
+          {
+            'winter': winter_enable | float,
+            'spring': spring_enable | float,
+            'summer': summer_enable | float,
+            'autumn': autumn_enable | float
+          }.get(season)
+        }}
+      disable_threshold: >
+        {{
+          {
+            'winter': winter_disable | float,
+            'spring': spring_disable | float,
+            'summer': summer_disable | float,
+            'autumn': autumn_disable | float
+          }.get(season)
+        }}
+      occupied: >
+        {{
+          configured_presence_sensors | length > 0
+          and expand(configured_presence_sensors)
+            | selectattr('state', 'eq', 'on')
+            | list
+            | count > 0
+        }}
+      window_open: >
+        {{
+          configured_window_sensors | length > 0
+          and expand(configured_window_sensors)
+            | selectattr('state', 'eq', 'on')
+            | list
+            | count > 0
+        }}
+      away_active: "{{ is_state(away_entity, 'on') }}"
+      schedule_offset: >
+        {% if is_state(night_schedule, 'on') %}
+          {{ night_offset | float }}
+        {% elif is_state(comfort_schedule, 'on') %}
+          {{ comfort_offset | float }}
+        {% else %}
+          0
+        {% endif %}
+      calculated_temperature: >
+        {{
+          (base_temperature | float)
+          + (schedule_offset | float)
+          + ((occupancy_bonus | float) if occupied | bool else 0)
+        }}
+      desired_temperature: >
+        {% if window_open | bool %}
+          {{ configured_open_temperature | float }}
+        {% elif away_active | bool %}
+          {{ configured_away_temperature | float }}
+        {% else %}
+          {{ calculated_temperature | float }}
+        {% endif %}
+      control_data_valid: >
+        {{
+          is_number(expected_low)
+          and is_number(current_temperature)
+          and is_number(enable_threshold)
+          and is_number(disable_threshold)
+        }}
+      heating_allowed: >
+        {{
+          control_data_valid | bool
+          and (expected_low | float) < (enable_threshold | float)
+          and (current_temperature | float) <= (disable_threshold | float)
+        }}
+
+  - if:
+      - "{{ not (heating_allowed | bool) }}"
+    then:
+      - if:
+          - "{{ states(climate_entity) != 'off' }}"
+        then:
+          - action: climate.set_hvac_mode
+            target:
+              entity_id: !input climate_entity
+            data:
+              hvac_mode: "off"
+      - stop: >
+          Heizen ist wegen ungueltiger Daten, der saisonalen Wettergrenze oder
+          der aktuellen Raumtemperatur nicht freigegeben.
+
+  - if:
+      - >
+        {{
+          states(climate_entity) != 'heat'
+          or not is_number(current_target_temperature)
+          or ((current_target_temperature | float) - (desired_temperature | float)) | abs >= 0.1
+        }}
+    then:
+      - action: climate.set_temperature
+        target:
+          entity_id: !input climate_entity
+        data:
+          hvac_mode: heat
+          temperature: "{{ desired_temperature | float }}"

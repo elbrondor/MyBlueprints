@@ -39,6 +39,13 @@ Steuert motorisierte Kellerfenster anhand der absoluten Luftfeuchtigkeit innen u
 - [Dokumentation zur Fensterlueftung](CLIMATEWINDOW.md)
 - [Blueprint: ClimateWindow.yaml](ClimateWindow.yaml)
 
+### HeaterAutomation
+
+Saisonale und zeitabhaengige Heizungssteuerung mit drei Wochenzeitplaenen, Anwesenheitsbonus, Abwesenheits- und Fenstermodus sowie getrennten Heizgrenzen fuer jede Jahreszeit.
+
+- [Dokumentation zur Heizungssteuerung](HEATER.md)
+- [Blueprint: HeaterAutomation.yaml](HeaterAutomation.yaml)
+
 ## Installation
 
 Die jeweilige YAML-Datei kann in Home Assistant als Blueprint importiert oder in das lokale Blueprint-Verzeichnis kopiert werden. Weitere Hinweise und die jeweiligen Funktionen stehen in den getrennten Dokumentationen.
