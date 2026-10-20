@@ -439,10 +439,18 @@ actions:
           der aktuellen Raumtemperatur nicht freigegeben.
 
   - if:
+      - "{{ states(climate_entity) != 'heat' }}"
+    then:
+      - action: climate.set_hvac_mode
+        target:
+          entity_id: !input climate_entity
+        data:
+          hvac_mode: heat
+
+  - if:
       - >
         {{
-          states(climate_entity) != 'heat'
-          or not is_number(current_target_temperature)
+          not is_number(current_target_temperature)
           or ((current_target_temperature | float) - (desired_temperature | float)) | abs >= 0.1
         }}
     then:
@@ -450,5 +458,4 @@ actions:
         target:
           entity_id: !input climate_entity
         data:
-          hvac_mode: heat
           temperature: "{{ desired_temperature | float }}"
