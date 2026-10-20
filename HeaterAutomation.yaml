@@ -351,6 +351,7 @@ actions:
         {{ state_attr(climate_entity, 'current_temperature') | float(none) }}
       current_target_temperature: >
         {{ state_attr(climate_entity, 'temperature') | float(none) }}
+      heating_mode_change_needed: "{{ states(climate_entity) != 'heat' }}"
       season: "{{ states(season_entity) }}"
       enable_threshold: >
         {{
@@ -439,7 +440,7 @@ actions:
           der aktuellen Raumtemperatur nicht freigegeben.
 
   - if:
-      - "{{ states(climate_entity) != 'heat' }}"
+      - "{{ heating_mode_change_needed | bool }}"
     then:
       - action: climate.set_hvac_mode
         target:
@@ -450,7 +451,8 @@ actions:
   - if:
       - >
         {{
-          not is_number(current_target_temperature)
+          heating_mode_change_needed | bool
+          or not is_number(current_target_temperature)
           or ((current_target_temperature | float) - (desired_temperature | float)) | abs >= 0.1
         }}
     then:
