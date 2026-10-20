@@ -1,13 +1,13 @@
 # =============================================================================
 # HeaterAutomation.yaml
 #
-# VERSION: 0.1.0
+# VERSION: 0.1.1
 # =============================================================================
 
 blueprint:
   name: HeaterAutomation
   description: >
-    Version 0.1.0. Steuert einen Raumthermostat anhand von Wochenzeitplaenen,
+    Version 0.1.1. Steuert einen Raumthermostat anhand von Wochenzeitplaenen,
     Anwesenheit, Abwesenheit, offenen Fenstern und saisonalen Heizgrenzen.
     Die erwartete Tagestiefsttemperatur wird aus der taeglichen
     Wettervorhersage gelesen.
@@ -349,9 +349,6 @@ actions:
         }}
       current_temperature: >
         {{ state_attr(climate_entity, 'current_temperature') | float(none) }}
-      current_target_temperature: >
-        {{ state_attr(climate_entity, 'temperature') | float(none) }}
-      heating_mode_change_needed: "{{ states(climate_entity) != 'heat' }}"
       season: "{{ states(season_entity) }}"
       enable_threshold: >
         {{
@@ -439,25 +436,14 @@ actions:
           Heizen ist wegen ungueltiger Daten, der saisonalen Wettergrenze oder
           der aktuellen Raumtemperatur nicht freigegeben.
 
-  - if:
-      - "{{ heating_mode_change_needed | bool }}"
-    then:
-      - action: climate.set_hvac_mode
-        target:
-          entity_id: !input climate_entity
-        data:
-          hvac_mode: heat
+  - action: climate.set_hvac_mode
+    target:
+      entity_id: !input climate_entity
+    data:
+      hvac_mode: heat
 
-  - if:
-      - >
-        {{
-          heating_mode_change_needed | bool
-          or not is_number(current_target_temperature)
-          or ((current_target_temperature | float) - (desired_temperature | float)) | abs >= 0.1
-        }}
-    then:
-      - action: climate.set_temperature
-        target:
-          entity_id: !input climate_entity
-        data:
-          temperature: "{{ desired_temperature | float }}"
+  - action: climate.set_temperature
+    target:
+      entity_id: !input climate_entity
+    data:
+      temperature: "{{ desired_temperature | float }}"

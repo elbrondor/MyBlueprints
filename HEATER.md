@@ -2,7 +2,7 @@
 
 `HeaterAutomation.yaml` ist ein Home-Assistant-Blueprint zur saisonalen und zeitabhaengigen Steuerung eines Raumthermostats.
 
-**Aktuelle Blueprint-Version: 0.1.0**
+**Aktuelle Blueprint-Version: 0.1.1**
 
 ## Funktionen
 
@@ -13,6 +13,7 @@
 - Feste Solltemperaturen fuer Abwesenheit und offene Fenster oder Tueren
 - Saisonale Heizfreigabe anhand der erwarteten Tagestiefsttemperatur
 - Saisonale Abschaltung anhand der aktuellen Thermostattemperatur
+- Manueller Heizmodus wird vor jeder Sollwertuebernahme erneut gesetzt
 - Regelmaessige Neubewertung und Reaktion auf alle beteiligten Entitaeten
 
 ## Temperaturberechnung
@@ -28,6 +29,8 @@ Eine aktive Abwesenheitsentitaet ersetzt den berechneten Wert durch die Abwesenh
 Die Automation ruft die taegliche Vorhersage mit `weather.get_forecasts` ab und liest `templow` des aktuellen Tages. Geheizt wird nur, wenn dieser Wert unter der zur Jahreszeit gehoerenden Heiz-Einschaltschwelle liegt.
 
 Liegt die aktuelle Temperatur des Thermostats ueber der saisonalen Heiz-Ausschaltschwelle, wird der HVAC-Modus auf `off` gesetzt. Dasselbe gilt bei ungueltigen Wetter-, Saison- oder Thermostatdaten.
+
+Nach jeder freigegebenen Neubewertung setzt die Automation den HVAC-Modus zuerst auf `heat` und uebertraegt danach den berechneten Sollwert. Dadurch bleibt der Thermostat auch nach Zeitplan-, Anwesenheits-, Fenster-, Abwesenheits-, Wetter- und Saisonwechseln im manuellen Modus.
 
 ## Standardwerte
 
