@@ -1,16 +1,17 @@
 # =============================================================================
 # HeaterAutomation.yaml
 #
-# VERSION: 0.1.1
+# VERSION: 0.2.0
 # =============================================================================
 
 blueprint:
   name: HeaterAutomation
   description: >
-    Version 0.1.1. Steuert einen Raumthermostat anhand von Wochenzeitplaenen,
+    Version 0.2.0. Steuert einen Raumthermostat anhand von Wochenzeitplaenen,
     Anwesenheit, Abwesenheit, offenen Fenstern und saisonalen Heizgrenzen.
-    Die erwartete Tagestiefsttemperatur wird aus der taeglichen
-    Wettervorhersage gelesen.
+    Tagestiefsttemperatur und Tagesmittel werden aus der taeglichen
+    Wettervorhersage gelesen. Eine saisonale Prognoseregel kann das Heizen
+    vormittags und nachmittags vorausschauend sperren.
   domain: automation
   author: Jonny.S@gmx.de
   source_url: https://github.com/elbrondor/MyBlueprints/blob/master/HeaterAutomation.yaml
@@ -266,6 +267,108 @@ blueprint:
               step: 0.5
               unit_of_measurement: "°C"
 
+    predictive_heating_block:
+      name: Vorausschauende Heizsperre
+      icon: mdi:weather-partly-cloudy
+      collapsed: true
+      input:
+        predictive_morning_start:
+          name: Vormittag - Beginn
+          description: Beginn des Vormittagsfensters; muss vor dessen Ende liegen.
+          default: "04:00:00"
+          selector:
+            time:
+        predictive_morning_end:
+          name: Vormittag - Ende
+          description: Ende des Vormittagsfensters; der Endzeitpunkt gehoert nicht mehr dazu.
+          default: "12:00:00"
+          selector:
+            time:
+        predictive_afternoon_start:
+          name: Nachmittag - Beginn
+          description: Beginn des Nachmittagsfensters; muss vor dessen Ende liegen.
+          default: "12:00:00"
+          selector:
+            time:
+        predictive_afternoon_end:
+          name: Nachmittag - Ende
+          description: Ende des Nachmittagsfensters; der Endzeitpunkt gehoert nicht mehr dazu.
+          default: "17:00:00"
+          selector:
+            time:
+        winter_morning_mean_threshold:
+          name: Winter - Vormittag
+          default: 17
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        spring_morning_mean_threshold:
+          name: Fruehling - Vormittag
+          default: 14
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        summer_morning_mean_threshold:
+          name: Sommer - Vormittag
+          default: 14
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        autumn_morning_mean_threshold:
+          name: Herbst - Vormittag
+          default: 15
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        winter_afternoon_mean_threshold:
+          name: Winter - Nachmittag
+          default: 18
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        spring_afternoon_mean_threshold:
+          name: Fruehling - Nachmittag
+          default: 17
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        summer_afternoon_mean_threshold:
+          name: Sommer - Nachmittag
+          default: 14
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+        autumn_afternoon_mean_threshold:
+          name: Herbst - Nachmittag
+          default: 16
+          selector:
+            number:
+              min: -20
+              max: 30
+              step: 0.5
+              unit_of_measurement: "°C"
+
 mode: restart
 max_exceeded: silent
 
@@ -293,6 +396,18 @@ variables:
   spring_disable: !input spring_disable_threshold
   summer_disable: !input summer_disable_threshold
   autumn_disable: !input autumn_disable_threshold
+  morning_window_start: !input predictive_morning_start
+  morning_window_end: !input predictive_morning_end
+  afternoon_window_start: !input predictive_afternoon_start
+  afternoon_window_end: !input predictive_afternoon_end
+  winter_morning_mean: !input winter_morning_mean_threshold
+  spring_morning_mean: !input spring_morning_mean_threshold
+  summer_morning_mean: !input summer_morning_mean_threshold
+  autumn_morning_mean: !input autumn_morning_mean_threshold
+  winter_afternoon_mean: !input winter_afternoon_mean_threshold
+  spring_afternoon_mean: !input spring_afternoon_mean_threshold
+  summer_afternoon_mean: !input summer_afternoon_mean_threshold
+  autumn_afternoon_mean: !input autumn_afternoon_mean_threshold
 
 triggers:
   - id: periodic_check
@@ -329,6 +444,18 @@ triggers:
   - id: window_changed
     trigger: state
     entity_id: !input window_sensors
+  - id: predictive_morning_started
+    trigger: time
+    at: !input predictive_morning_start
+  - id: predictive_morning_ended
+    trigger: time
+    at: !input predictive_morning_end
+  - id: predictive_afternoon_started
+    trigger: time
+    at: !input predictive_afternoon_start
+  - id: predictive_afternoon_ended
+    trigger: time
+    at: !input predictive_afternoon_end
 
 actions:
   - action: weather.get_forecasts
@@ -347,6 +474,18 @@ actions:
           if forecast_items | length > 0
           else none
         }}
+      expected_high: >
+        {{
+          forecast_items[0].get('temperature')
+          if forecast_items | length > 0
+          else none
+        }}
+      expected_mean: >
+        {% if is_number(expected_low) and is_number(expected_high) %}
+          {{ ((expected_low | float) + (expected_high | float)) / 2 }}
+        {% else %}
+          {{ none }}
+        {% endif %}
       current_temperature: >
         {{ state_attr(climate_entity, 'current_temperature') | float(none) }}
       season: "{{ states(season_entity) }}"
@@ -359,6 +498,38 @@ actions:
             'autumn': autumn_enable | float
           }.get(season)
         }}
+      predictive_period: >
+        {% if today_at(morning_window_start) <= now()
+              < today_at(morning_window_end) %}
+          morning
+        {% elif today_at(afternoon_window_start) <= now()
+                < today_at(afternoon_window_end) %}
+          afternoon
+        {% else %}
+          none
+        {% endif %}
+      predictive_threshold: >
+        {% if predictive_period == 'morning' %}
+          {{
+            {
+              'winter': winter_morning_mean | float,
+              'spring': spring_morning_mean | float,
+              'summer': summer_morning_mean | float,
+              'autumn': autumn_morning_mean | float
+            }.get(season)
+          }}
+        {% elif predictive_period == 'afternoon' %}
+          {{
+            {
+              'winter': winter_afternoon_mean | float,
+              'spring': spring_afternoon_mean | float,
+              'summer': summer_afternoon_mean | float,
+              'autumn': autumn_afternoon_mean | float
+            }.get(season)
+          }}
+        {% else %}
+          {{ none }}
+        {% endif %}
       disable_threshold: >
         {{
           {
@@ -413,12 +584,27 @@ actions:
           and is_number(current_temperature)
           and is_number(enable_threshold)
           and is_number(disable_threshold)
+          and (
+            predictive_period == 'none'
+            or (
+              is_number(expected_mean)
+              and is_number(predictive_threshold)
+            )
+          )
+        }}
+      predictive_heating_blocked: >
+        {{
+          predictive_period in ['morning', 'afternoon']
+          and is_number(expected_mean)
+          and is_number(predictive_threshold)
+          and (expected_mean | float) > (predictive_threshold | float)
         }}
       heating_allowed: >
         {{
           control_data_valid | bool
           and (expected_low | float) < (enable_threshold | float)
           and (current_temperature | float) <= (disable_threshold | float)
+          and not (predictive_heating_blocked | bool)
         }}
 
   - if:
@@ -434,7 +620,8 @@ actions:
               hvac_mode: "off"
       - stop: >
           Heizen ist wegen ungueltiger Daten, der saisonalen Wettergrenze oder
-          der aktuellen Raumtemperatur nicht freigegeben.
+          der aktuellen Raumtemperatur nicht freigegeben oder wurde durch die
+          vorausschauende Heizsperre abgeschaltet.
 
   - action: climate.set_hvac_mode
     target:

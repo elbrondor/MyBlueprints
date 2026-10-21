@@ -2,7 +2,7 @@
 
 `HeaterAutomation.yaml` ist ein Home-Assistant-Blueprint zur saisonalen und zeitabhaengigen Steuerung eines Raumthermostats.
 
-**Aktuelle Blueprint-Version: 0.1.1**
+**Aktuelle Blueprint-Version: 0.2.0**
 
 ## Funktionen
 
@@ -12,6 +12,7 @@
 - Zuschlag bei Anwesenheit
 - Feste Solltemperaturen fuer Abwesenheit und offene Fenster oder Tueren
 - Saisonale Heizfreigabe anhand der erwarteten Tagestiefsttemperatur
+- Vorausschauende Heizsperre anhand der erwarteten mittleren Tagestemperatur
 - Saisonale Abschaltung anhand der aktuellen Thermostattemperatur
 - Manueller Heizmodus wird vor jeder Sollwertuebernahme erneut gesetzt
 - Regelmaessige Neubewertung und Reaktion auf alle beteiligten Entitaeten
@@ -28,7 +29,9 @@ Eine aktive Abwesenheitsentitaet ersetzt den berechneten Wert durch die Abwesenh
 
 Die Automation ruft die taegliche Vorhersage mit `weather.get_forecasts` ab und liest `templow` des aktuellen Tages. Geheizt wird nur, wenn dieser Wert unter der zur Jahreszeit gehoerenden Heiz-Einschaltschwelle liegt.
 
-Liegt die aktuelle Temperatur des Thermostats ueber der saisonalen Heiz-Ausschaltschwelle, wird der HVAC-Modus auf `off` gesetzt. Dasselbe gilt bei ungueltigen Wetter-, Saison- oder Thermostatdaten.
+Aus Tagesmaximum `temperature` und Tagestiefstwert `templow` wird `(temperature + templow) / 2` als erwartete mittlere Tagestemperatur berechnet. Im Vormittags- und Nachmittagsfenster wird der HVAC-Modus auf `off` gesetzt, wenn dieses Tagesmittel ueber der zur Jahreszeit und zum Zeitfenster gehoerenden Schwelle liegt. Die Zeitfenster und alle acht Schwellen sind konfigurierbar. Die Fenster sollten sich nicht ueberschneiden; bei einer Ueberschneidung hat das Vormittagsfenster Vorrang.
+
+Liegt die aktuelle Temperatur des Thermostats ueber der saisonalen Heiz-Ausschaltschwelle, wird der HVAC-Modus ebenfalls auf `off` gesetzt. Dasselbe gilt bei ungueltigen Wetter-, Saison- oder Thermostatdaten. Die saisonalen Grenzen und die vorausschauende Heizsperre haben Vorrang vor Zeitplaenen, Anwesenheit, Abwesenheit und offenen Fenstern.
 
 Nach jeder freigegebenen Neubewertung setzt die Automation den HVAC-Modus zuerst auf `heat` und uebertraegt danach den berechneten Sollwert. Dadurch bleibt der Thermostat auch nach Zeitplan-, Anwesenheits-, Fenster-, Abwesenheits-, Wetter- und Saisonwechseln im manuellen Modus.
 
@@ -50,6 +53,12 @@ Nach jeder freigegebenen Neubewertung setzt die Automation den HVAC-Modus zuerst
 | Heiz-Ausschaltschwelle Fruehling | 21,0 °C |
 | Heiz-Ausschaltschwelle Sommer | 20,0 °C |
 | Heiz-Ausschaltschwelle Herbst | 21,0 °C |
+| Vormittagsfenster | 04:00-12:00 Uhr |
+| Nachmittagsfenster | 12:00-17:00 Uhr |
+| Tagesmittel-Schwelle Winter, Vormittag/Nachmittag | 17,0 / 18,0 °C |
+| Tagesmittel-Schwelle Fruehling, Vormittag/Nachmittag | 14,0 / 17,0 °C |
+| Tagesmittel-Schwelle Sommer, Vormittag/Nachmittag | 14,0 / 14,0 °C |
+| Tagesmittel-Schwelle Herbst, Vormittag/Nachmittag | 15,0 / 16,0 °C |
 
 ## Installation
 

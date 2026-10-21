@@ -82,3 +82,25 @@ Geheizt werden darf nur, wenn die fuer den aktuellen Tag erwartete Tiefsttempera
 | Heiz-Ausschaltschwelle Herbst | Zahl | 21,0 | 5 | 30 | 0,5 | °C |
 
 Liegt die vom Thermostat gemeldete aktuelle Temperatur ueber der zur aktuellen Jahreszeit gehoerenden Heiz-Ausschaltschwelle, muss die Heizung abgeschaltet werden.
+
+## Vorausschauende Heizsperre
+
+| Name | Typ | Standard |
+|---|---|---|
+| Vormittag - Beginn | Zeit | 04:00 |
+| Vormittag - Ende | Zeit | 12:00 |
+| Nachmittag - Beginn | Zeit | 12:00 |
+| Nachmittag - Ende | Zeit | 17:00 |
+
+| Name | Typ | Standard | Minimum | Maximum | Schritt | Einheit |
+|---|---|---:|---:|---:|---:|---|
+| Tagesmittel-Schwelle Winter - Vormittag | Zahl | 17,0 | -20 | 30 | 0,5 | °C |
+| Tagesmittel-Schwelle Winter - Nachmittag | Zahl | 18,0 | -20 | 30 | 0,5 | °C |
+| Tagesmittel-Schwelle Fruehling - Vormittag | Zahl | 14,0 | -20 | 30 | 0,5 | °C |
+| Tagesmittel-Schwelle Fruehling - Nachmittag | Zahl | 17,0 | -20 | 30 | 0,5 | °C |
+| Tagesmittel-Schwelle Sommer - Vormittag | Zahl | 14,0 | -20 | 30 | 0,5 | °C |
+| Tagesmittel-Schwelle Sommer - Nachmittag | Zahl | 14,0 | -20 | 30 | 0,5 | °C |
+| Tagesmittel-Schwelle Herbst - Vormittag | Zahl | 15,0 | -20 | 30 | 0,5 | °C |
+| Tagesmittel-Schwelle Herbst - Nachmittag | Zahl | 16,0 | -20 | 30 | 0,5 | °C |
+
+Das erwartete Tagesmittel wird aus `(temperature + templow) / 2` der taeglichen Wettervorhersage berechnet. Liegt es waehrend eines aktiven Zeitfensters ueber der passenden saisonalen Schwelle, wird der HVAC-Modus ausgeschaltet. Die vorausschauende Heizsperre hat Vorrang vor Zeitplaenen, Anwesenheit, Abwesenheit und offenen Fenstern. Die Zeitfenster duerfen Luecken haben, sollten sich aber nicht ueberschneiden; bei einer Ueberschneidung gilt das Vormittagsfenster.
