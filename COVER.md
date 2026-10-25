@@ -2,7 +2,7 @@
 
 `ShutterCoverAutomation.yaml` ist ein Home-Assistant-Blueprint zur automatischen Steuerung von Rollläden.
 
-**Aktuelle Blueprint-Version: 1.0.0**
+**Aktuelle Blueprint-Version: 1.1.0**
 
 ## Funktionen
 
@@ -12,7 +12,7 @@
 - Workday-Unterstützung
 - Fenster-/Türschutz gegen Aussperren
 - Lüftungsschutz bei geöffnetem oder gekipptem Fenster
-- Regenschutz bei geöffnetem/gekipptem Fenster
+- Regenschutz bei geöffnetem/gekipptem Fenster und leerem Raum
 - Manuelle bzw. externe Übersteuerung
 - Temperatur-, Raumtemperatur- und bewölkungsabhängige Globalbeschattung
 - Schlafzimmer-Sonderfunktion bei frühem Sonnenaufgang
@@ -30,7 +30,7 @@ Home Assistant verwendet:
 Die Steuerung berücksichtigt die Funktionen in folgender Reihenfolge:
 
 1. Aktiver Fenster-/Aussperrschutz
-2. Regenschutz bei geöffnetem/gekipptem Fenster
+2. Regenschutz bei geöffnetem/gekipptem Fenster und leerem Raum
 3. Sonderfall Sonnenaufgang vor frühester Öffnungszeit
 4. Manuelle/externe Übersteuerung
 5. Globalbeschattung
@@ -52,6 +52,8 @@ Der Regenschutz kann optional aktiviert werden. Ein oder mehrere binäre Regense
 - `off` = trocken
 
 Bei aktivem Regenschutz und geöffnetem bzw. gekipptem Fenster wird eine konfigurierbare Rollladenposition angefahren. Der Aussperrschutz bei einem vollständig geöffneten Drei-Zustands-Fenstergriff besitzt höhere Priorität.
+
+Optional können Anwesenheits-, Präsenz- oder Bewegungsmelder für den Raum ausgewählt werden. Solange mindestens ein Sensor `on` meldet, wird der Regenschutz ausgesetzt, damit trotz Regen gelüftet werden kann. Der normale Fenster-/Lüftungsschutz bleibt dabei aktiv. Erst wenn alle ausgewählten Sensoren mindestens für die konfigurierte Dauer `off` melden, standardmäßig 10 Minuten, greift der Regenschutz wieder. Ohne ausgewählte Anwesenheitssensoren verhält sich der Regenschutz wie bisher.
 
 ## Sonnenaufgang und Öffnen
 

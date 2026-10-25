@@ -1,7 +1,7 @@
 # =============================================================================
 # ShutterCoverAutomation.yaml
 #
-# VERSION: 1.0.0
+# VERSION: 1.1.0
 #
 # Home Assistant Blueprint zur automatischen Steuerung von Rollläden.
 #
@@ -12,7 +12,7 @@
 # PRIORITÄTEN
 #
 # 1. Aktiver Fenster-/Aussperrschutz
-# 2. Regenschutz bei geöffnetem/gekipptem Fenster
+# 2. Regenschutz bei geöffnetem/gekipptem Fenster und leerem Raum
 # 3. Sonderfall Sonnenaufgang vor frühester Öffnungszeit
 # 4. Manuelle/externe Übersteuerung
 # 5. Globalbeschattung
@@ -26,7 +26,7 @@
 # =============================================================================
 
 blueprint:
-  name: ShutterCoverAutomation V1.0.0
+  name: ShutterCoverAutomation V1.1.0
 
   description: >
     Automatische Rollladensteuerung mit Sonnenaufgang/Sonnenuntergang,
@@ -252,6 +252,52 @@ blueprint:
               max: 100
               step: 5
               unit_of_measurement: "%"
+              mode: slider
+
+
+        my_rain_presence_sensors:
+
+          name: Anwesenheitssensoren für Lüftungsausnahme
+
+          description: >
+            Optionale Anwesenheits-, Präsenz- oder Bewegungsmelder für den
+            Raum. Solange mindestens ein Sensor on meldet, wird der
+            Regenschutz ausgesetzt, damit trotz Regen gelüftet werden kann.
+            Der normale Fenster-/Lüftungsschutz bleibt aktiv.
+
+            Bei leerer Liste greift der Regenschutz wie bisher ohne
+            Anwesenheitsprüfung.
+
+          default: []
+
+          selector:
+            entity:
+              filter:
+                - domain:
+                    - binary_sensor
+                  device_class:
+                    - occupancy
+                    - presence
+                    - motion
+              multiple: true
+
+
+        my_rain_unoccupied_delay:
+
+          name: Mindestdauer leerer Raum
+
+          description: >
+            Erst wenn alle konfigurierten Anwesenheitssensoren mindestens
+            so lange off melden, darf der Regenschutz wieder schließen.
+
+          default: 10
+
+          selector:
+            number:
+              min: 0
+              max: 60
+              step: 1
+              unit_of_measurement: "min"
               mode: slider
 
 
@@ -768,6 +814,22 @@ triggers:
     id: rain_change
 
 
+  # Anwesenheit setzt den Regenschutz sofort aus. Nach Ende der Anwesenheit
+  # wird erst nach der konfigurierten Leerstandszeit neu bewertet.
+  - trigger: state
+    entity_id: !input my_rain_presence_sensors
+    to: "on"
+    id: rain_presence_detected
+
+
+  - trigger: state
+    entity_id: !input my_rain_presence_sensors
+    to: "off"
+    for:
+      minutes: !input my_rain_unoccupied_delay
+    id: rain_presence_cleared
+
+
   # ---------------------------------------------------------------------------
   # GLOBALBESCHATTUNG
   # ---------------------------------------------------------------------------
@@ -809,6 +871,7 @@ variables:
   override_automations: !input my_override_automations
 
   rain_sensors: !input my_rain_sensors
+  rain_presence_sensors: !input my_rain_presence_sensors
 
   workday_sensor: !input my_is_workday
 
@@ -833,6 +896,7 @@ variables:
 
   rain_protection_enabled: !input my_rain_protection_enabled
   rain_position: !input my_rain_position
+  rain_unoccupied_delay: !input my_rain_unoccupied_delay
 
   protection_close_percentage: !input my_protection_close_percentage
 
@@ -1184,6 +1248,25 @@ variables:
     }}
 
 
+  # ===========================================================================
+  # RAUM SEIT MINDESTDAUER LEER?
+  # ===========================================================================
+
+  room_unoccupied_for_rain_protection: >
+    {% set sensors = expand(rain_presence_sensors) | list %}
+    {% set delay_seconds = (rain_unoccupied_delay | int(10)) * 60 %}
+    {% set ns = namespace(
+      ready=((sensors | count) == (rain_presence_sensors | count))
+    ) %}
+    {% for sensor in sensors %}
+      {% if sensor.state != 'off'
+            or (now() - sensor.last_changed).total_seconds() < delay_seconds %}
+        {% set ns.ready = false %}
+      {% endif %}
+    {% endfor %}
+    {{ ns.ready }}
+
+
 
   # ===========================================================================
   # REGENSCHUTZ AKTIV?
@@ -1194,6 +1277,8 @@ variables:
       rain_protection_enabled | bool
       and
       rain_sensors | length > 0
+      and
+      room_unoccupied_for_rain_protection | bool
       and
       (
         expand(rain_sensors)
@@ -1341,8 +1426,9 @@ actions:
   # durch den Aussperrschutz oben behandelt und bleibt auf 100 %.
   #
   # Bei TILTED oder einem offenen Zwei-Zustands-Fenstersensor wird bei Regen
-  # die konfigurierte Regenposition angefahren. Der Regenschutz überstimmt
-  # dabei die manuelle/externe Übersteuerung.
+  # und ausreichend lange leerem Raum die konfigurierte Regenposition
+  # angefahren. Der Regenschutz überstimmt dabei die manuelle/externe
+  # Übersteuerung.
   # ===========================================================================
 
   - choose:
@@ -1561,6 +1647,8 @@ actions:
   # wird es bis zur Schutzposition geöffnet.
   #
   # Ein bereits weiter geöffnetes Rollo wird NICHT geschlossen.
+  # Erkannte Anwesenheit hebt eine zuvor angefahrene Regenposition sofort
+  # bis zur normalen Schutzposition an.
   # ===========================================================================
 
   - choose:
@@ -1571,6 +1659,11 @@ actions:
             id:
               - handle_tilted
               - window_open
+              - rain_presence_detected
+
+          - condition: template
+            value_template: >
+              {{ handle_is_tilted | bool or window_is_open | bool }}
 
           - condition: template
             value_template: >
@@ -1647,6 +1740,11 @@ actions:
             id:
               - handle_tilted
               - window_open
+              - rain_presence_detected
+
+          - condition: template
+            value_template: >
+              {{ handle_is_tilted | bool or window_is_open | bool }}
 
         sequence:
 
